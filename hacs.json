@@ -1,0 +1,6 @@
+{
+  "name": "eQ-3 MAX! Thermostat Card",
+  "filename": "eq3-max-thermostat-card.js",
+  "homeassistant": "2026.8.0",
+  "render_readme": true
+}
