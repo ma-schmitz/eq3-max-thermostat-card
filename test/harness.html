@@ -112,6 +112,21 @@
     if (q.get("day")) dlg._editDay({ day: q.get("day"), known: q.get("day") === "Montag", segments: q.get("day") === "Montag" ? [{ from: "00:00", to: "06:00", temperature: 17 }, { from: "06:00", to: "22:00", temperature: 21 }, { from: "22:00", to: "24:00", temperature: 17 }] : [] });
     dlg._drafts = q.get("draft") ? { komfort: 22 } : {};
     dlg._render();
+    if (q.get("selftest") === "scroll") {
+      setTimeout(() => {
+        const body = () => dlg.shadowRoot.querySelector(".body");
+        body().scrollTop = 150;
+        const before = body().scrollTop;
+        dlg._render();
+        document.body.setAttribute("data-scroll", `${before}->${body().scrollTop}`);
+        // A state update while a time field has the focus must not rebuild the dialog.
+        const input = dlg.shadowRoot.querySelector("input[type=time]");
+        input.focus();
+        hass.states["climate.ht_wz"] = { ...hass.states["climate.ht_wz"], last_updated: new Date().toISOString() };
+        dlg.hass = hass;
+        document.body.setAttribute("data-focus", dlg.shadowRoot.activeElement === input ? "kept" : "lost");
+      }, 300);
+    }
   }
 </script>
 </body>

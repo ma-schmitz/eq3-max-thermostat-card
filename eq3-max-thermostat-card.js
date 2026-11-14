@@ -72,7 +72,9 @@ const EN = {
   "Entität {entity} nicht gefunden.": "Entity {entity} not found.",
   "Entität": "Entity", "Layout": "Layout", "Name (optional)": "Name (optional)", "Modus-Knöpfe zeigen": "Show mode buttons",
   "kompakt": "compact", "ring": "ring", "kachel": "tile",
-  "Ist {value} °C": "Now {value} °C", "Seriennummer": "Serial number", "Firmware": "Firmware", "Hauptmodul": "Main module",
+  "Ist {value} °C": "Now {value} °C",
+  "Die Endzeiten müssen von oben nach unten steigen.": "End times must rise from top to bottom.",
+  "Endzeiten nur in 5-Minuten-Schritten.": "End times only in steps of 5 minutes.", "Seriennummer": "Serial number", "Firmware": "Firmware", "Hauptmodul": "Main module",
 };
 
 /** Text in the HA language; German is the key, everything not German falls back to English. */
@@ -147,10 +149,35 @@ export function weekRows(profile) {
   });
 }
 
-/** Editor segments → profile for set_week_profile (last point without until). */
+/** Editor segments → profile for set_week_profile (last point without until), in the
+ *  order shown; profileErrors says whether that order is valid. */
 export function segmentsToProfile(segments) {
-  const sorted = [...segments].sort((a, b) => a.to.localeCompare(b.to));
-  return sorted.map((s, i) => (i === sorted.length - 1 ? { temperature: Number(s.temperature) } : { temperature: Number(s.temperature), until: s.to }));
+  return segments.map((s, i) => (i === segments.length - 1 ? { temperature: Number(s.temperature) } : { temperature: Number(s.temperature), until: s.to }));
+}
+
+/** What keeps a day's segments from being written: "order" (end times not rising),
+ *  "grid" (not on 5 minutes). */
+export function profileErrors(segments) {
+  const errors = [];
+  const ends = segments.map((s) => s.to);
+  const mins = ends.map((x) => {
+    const [hh, mm] = String(x).split(":").map(Number);
+    return hh * 60 + mm;
+  });
+  if (mins.some((v, i) => i > 0 && v <= mins[i - 1])) errors.push("order");
+  if (mins.some((v) => Number.isNaN(v) || v % 5 !== 0)) errors.push("grid");
+  return errors;
+}
+
+/** Target a −/+ tap builds on: a sent, not yet acknowledged one counts, so taps add up. */
+export function baseTarget(attrs) {
+  const pending = num(attrs?.ausstehend);
+  return pending !== null ? pending : num(attrs?.temperature);
+}
+
+/** Numeric value of a number entity's state; null while unknown/unavailable. */
+export function configNumber(stateObj) {
+  return num(stateObj?.state);
 }
 
 /** Pop-up tabs; the wall thermostat has the display instead of the valve. */
@@ -543,13 +570,23 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
     }
 
     _stepper(m, withIcon = true) {
-      const step = (dir) => this._call(() => this._hass.callService("climate", "set_temperature",
-        { entity_id: this._config.entity, temperature: stepTarget(m.target, dir) }));
+      const step = (dir) => this._step(dir);
       const off = m.hvac === "off";
+      const shown = baseTarget(m.attrs);
       return h("div", { class: "stepper" },
-        h("button", { onclick: () => step(-1), disabled: off || m.target <= MIN_TEMP }, "−"),
-        h("span", { class: "v" }, withIcon ? icon("mdi:target") : null, `${fmt(m.target)}°`),
-        h("button", { onclick: () => step(+1), disabled: off || m.target >= MAX_TEMP }, "+"));
+        h("button", { onclick: () => step(-1), disabled: off || shown <= MIN_TEMP }, "−"),
+        h("span", { class: "v" }, withIcon ? icon("mdi:target") : null, `${fmt(shown)}°`),
+        h("button", { onclick: () => step(+1), disabled: off || shown >= MAX_TEMP }, "+"));
+    }
+
+    _step(dir) {
+      // From the latest state (a pending target counts), not from the rendered one.
+      const attrs = this._hass.states[this._config.entity]?.attributes || {};
+      const target = stepTarget(this._local ?? baseTarget(attrs), dir);
+      this._local = target;
+      clearTimeout(this._localTimer);
+      this._localTimer = setTimeout(() => { this._local = undefined; }, 3000);
+      this._call(() => this._hass.callService("climate", "set_temperature", { entity_id: this._config.entity, temperature: target }));
     }
 
     _modes(lang, m, iconsOnly = false) {
@@ -608,13 +645,12 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
         circle(64, 5, "var(--e3-divider)", arc(64, 1));
         if ((m.valve ?? 0) > 0) circle(64, 5, "color-mix(in srgb, var(--tone) 60%, transparent)", arc(64, (m.valve ?? 0) / 100));
       }
-      const step = (dir) => this._call(() => this._hass.callService("climate", "set_temperature",
-        { entity_id: this._config.entity, temperature: stepTarget(m.target, dir) }));
+      const step = (dir) => this._step(dir);
       return h("ha-card", {},
         this._head(lang, m, this._stateText(lang, m)),
         h("div", { class: "ring" }, svg,
           h("div", { class: "c" },
-            h("div", { class: "big" }, m.hvac === "off" ? t(lang, "Aus") : `${fmt(m.target)}°`),
+            h("div", { class: "big" }, m.hvac === "off" ? t(lang, "Aus") : `${fmt(baseTarget(m.attrs))}°`),
             h("div", { class: "sub" }, t(lang, "Ist {value} °C", { value: fmt(m.current) })),
             m.isWall ? null : h("div", { class: "sub" }, icon("mdi:valve"), `${m.valve ?? "–"} %`))),
         h("div", { class: "ringbtns" },
@@ -773,6 +809,15 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
       const sig = [this._config?.entity, ...Object.values(ents)].map((id) => hass.states[id]?.last_updated || "").join(";");
       if (sig !== this._sig) {
         this._sig = sig;
+        // Someone is typing or choosing: rebuild once the field is left.
+        const active = this.shadowRoot.activeElement;
+        if (active && ["INPUT", "SELECT"].includes(active.tagName)) {
+          if (!this._deferred) {
+            this._deferred = true;
+            active.addEventListener("blur", () => { this._deferred = false; this._render(); }, { once: true });
+          }
+          return;
+        }
         this._render();
       }
     }
@@ -788,6 +833,10 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
       const lang = this._lang;
       const m = readModel(hass, this._config);
       const root = this.shadowRoot;
+      // Keep the scroll position of the same tab across the rebuild.
+      const oldBody = root.querySelector(".body");
+      const scroll = oldBody && this._scrollTab === this._tab ? oldBody.scrollTop : 0;
+      this._scrollTab = this._tab;
       root.replaceChildren(h("style", {}, DIALOG_STYLE));
       if (!m) { this.close(); return; }
       const tabs = tabsFor(m.isWall);
@@ -807,6 +856,8 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
             }, icon(tab.icon), h("span", {}, t(lang, tab.title))))),
           body.content,
           body.foot || null));
+      const newBody = root.querySelector(".body");
+      if (newBody && scroll) newBody.scrollTop = scroll;
     }
 
     // --- Einstellungen (number/select der Gerätekonfiguration) -----------------
@@ -827,17 +878,22 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
         const id = m.ents[key];
         const st = id ? hass.states[id] : undefined;
         if (!st) continue;
-        original[key] = st.state;
-        const value = key in drafts ? drafts[key] : st.state;
+        const known = id.startsWith("select.") ? (st.attributes.options || []).includes(st.state) : configNumber(st) !== null;
+        if (known) original[key] = st.state;
+        const value = key in drafts ? drafts[key] : known ? st.state : null;
         const changed = key in drafts && String(drafts[key]) !== String(st.state);
+        if (key in drafts && !known) original[key] = null;
         const isSelect = id.startsWith("select.");
         const unit = st.attributes.unit_of_measurement || "";
         let control;
         if (!editable) {
-          control = h("span", { class: "val" }, isSelect ? this._optionLabel(lang, key, value) : `${fmt(value, Number(st.attributes.step) < 1 ? 1 : 0)} ${unit}`);
+          control = h("span", { class: "val" }, value === null ? "–" : isSelect ? this._optionLabel(lang, key, value) : `${fmt(value, Number(st.attributes.step) < 1 ? 1 : 0)} ${unit}`);
         } else if (isSelect) {
           control = h("select", { class: changed ? "changed" : "", onchange: (ev) => { drafts[key] = ev.target.value; this._render(); } },
+            value === null ? h("option", { value: "", disabled: true, selected: true }, "–") : null,
             (st.attributes.options || []).map((o) => h("option", { value: o, selected: String(o) === String(value) }, this._optionLabel(lang, key, o))));
+        } else if (value === null) {
+          control = h("span", { class: "val" }, "–");
         } else {
           const min = Number(st.attributes.min), max = Number(st.attributes.max), step = Number(st.attributes.step) || 1;
           const digits = step < 1 ? 1 : 0;
@@ -956,7 +1012,7 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
         foot = h("div", { class: "foot" },
           h("span", { class: "info" }, this._copySelect(lang, m)),
           h("button", { class: "btn", onclick: () => { this._week = null; this._message = null; this._render(); } }, t(lang, "Verwerfen")),
-          h("button", { class: "btn p", disabled: !n || this._busy, onclick: () => this._writeWeek(m) },
+          h("button", { class: "btn p", disabled: !n || this._busy || profileErrors(w.segments).length > 0, onclick: () => this._writeWeek(m) },
             n === 1 ? t(lang, "Auf 1 Tag schreiben") : t(lang, "Auf {n} Tage schreiben", { n })));
       }
       return { content: h("div", { class: "body" }, parts), foot };
@@ -994,7 +1050,7 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
             h("span", { class: "from" }, s.from),
             "–",
             last ? h("span", { class: "from" }, "24:00") : h("input", {
-              type: "time", step: "600", value: s.to,
+              type: "time", step: "300", value: s.to,
               onchange: (ev) => { s.to = ev.target.value || s.to; this._render(); },
             }),
             h("div", { class: "st" },
@@ -1012,7 +1068,9 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
           h("button", { class: "link", onclick: () => {
             w.targets = w.targets.size === WEEKDAYS.length ? new Set() : new Set(WEEKDAYS); this._render();
           } }, t(lang, w.targets.size === WEEKDAYS.length ? "keinen" : "alle"))),
-        room.length ? h("div", { class: "note" }, icon("mdi:home-group"), " ", t(lang, "Geht auch an: {names}", { names: room.join(", ") })) : null);
+        room.length ? h("div", { class: "note" }, icon("mdi:home-group"), " ", t(lang, "Geht auch an: {names}", { names: room.join(", ") })) : null,
+        profileErrors(segs).map((e) => h("div", { class: "note bad" }, t(lang, e === "order"
+          ? "Die Endzeiten müssen von oben nach unten steigen." : "Endzeiten nur in 5-Minuten-Schritten."))));
     }
 
     _insertPeriod() {

@@ -12,6 +12,9 @@ import {
   canEdit,
   changedValues,
   stepTarget,
+  baseTarget,
+  profileErrors,
+  configNumber,
   FACTORY_WEEK_PROFILE,
   WEEKDAYS,
   ROOM_KEYS,
@@ -141,4 +144,31 @@ test("room keys and translations", () => {
   assert.equal(t("de", "Boost & Ventil"), "Boost & Ventil");
   assert.equal(t("en", "{n} geändert", { n: 2 }), "2 changed");
   assert.equal(t("fr", "Fenster"), "Window");
+});
+
+
+test("baseTarget: a pending target counts, so taps add up", () => {
+  assert.equal(baseTarget({ temperature: 21, ausstehend: 22 }), 22);
+  assert.equal(baseTarget({ temperature: 21, ausstehend: null }), 21);
+  assert.equal(stepTarget(baseTarget({ temperature: 21, ausstehend: 21.5 }), +1), 22);
+});
+
+test("segmentsToProfile keeps the editor order (no silent re-sorting)", () => {
+  assert.deepEqual(
+    segmentsToProfile([{ to: "08:00", temperature: 21 }, { to: "06:00", temperature: 17 }, { to: "24:00", temperature: 18 }]),
+    [{ temperature: 21, until: "08:00" }, { temperature: 17, until: "06:00" }, { temperature: 18 }],
+  );
+});
+
+test("profileErrors: end times must rise and lie on 5 minutes", () => {
+  assert.deepEqual(profileErrors([{ to: "06:00" }, { to: "22:00" }, { to: "24:00" }]), []);
+  assert.deepEqual(profileErrors([{ to: "08:00" }, { to: "06:00" }, { to: "24:00" }]), ["order"]);
+  assert.deepEqual(profileErrors([{ to: "06:03" }, { to: "24:00" }]), ["grid"]);
+});
+
+test("configNumber: unknown/unavailable states are no number", () => {
+  assert.equal(configNumber({ state: "21.0" }), 21);
+  assert.equal(configNumber({ state: "unknown" }), null);
+  assert.equal(configNumber({ state: "unavailable" }), null);
+  assert.equal(configNumber(undefined), null);
 });
