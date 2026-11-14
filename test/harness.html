@@ -129,6 +129,34 @@
     add({ entity: "climate.ht_wz", layout: "kachel" }, true), add({ entity: "climate.ht_ez", layout: "kachel" }, true),
   ];
   const q = new URLSearchParams(location.search);
+  if (q.get("selftest") === "minors") {
+    setTimeout(async () => {
+      const out = [];
+      // Unavailable thermostat: card says so, no controls.
+      hass.states["climate.ht_ez"] = { ...hass.states["climate.ht_ez"], state: "unavailable", last_updated: new Date().toISOString() };
+      window.cards[1].hass = { ...hass };
+      const root = window.cards[1].shadowRoot;
+      out.push("unavail=" + (!!root.querySelector(".unavail") && !root.querySelector(".stepper")));
+      // Back button closes the pop-up.
+      window.cards[0]._openDialog();
+      const opened = !!document.querySelector("eq3-max-thermostat-dialog");
+      history.back();
+      await new Promise((r) => setTimeout(r, 300));
+      out.push("back=" + (opened && !document.querySelector("eq3-max-thermostat-dialog")));
+      // X closes and leaves no extra history entry behind.
+      const before = history.length;
+      window.cards[0]._openDialog();
+      document.querySelector("eq3-max-thermostat-dialog").close();
+      await new Promise((r) => setTimeout(r, 300));
+      out.push("x=" + (!document.querySelector("eq3-max-thermostat-dialog") && !(history.state || {}).eq3MaxDialog));
+      // Card leaves the view: pop-up goes too.
+      window.cards[0]._openDialog();
+      window.cards[0].remove();
+      await new Promise((r) => setTimeout(r, 300));
+      out.push("detach=" + !document.querySelector("eq3-max-thermostat-dialog"));
+      document.body.setAttribute("data-minors", out.join(","));
+    }, 300);
+  }
   if (q.get("selftest") === "ring") {
     // Drag on the ring of card 3 (ring layout) from the top to the right end.
     setTimeout(() => {

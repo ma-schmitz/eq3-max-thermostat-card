@@ -17,6 +17,8 @@ import {
   configNumber,
   ringTemperature,
   ringAngle,
+  isUnavailable,
+  moduleLabel,
   FACTORY_WEEK_PROFILE,
   WEEKDAYS,
   ROOM_KEYS,
@@ -192,4 +194,20 @@ test("ringAngle is the inverse for the handle", () => {
   assert.equal(ringAngle(4.5), 135);
   assert.equal(ringAngle(30.5), 405);
   assert.equal(ringAngle(17.5), 270);
+});
+
+
+test("isUnavailable: unavailable or unknown climate", () => {
+  assert.equal(isUnavailable({ state: "unavailable" }), true);
+  assert.equal(isUnavailable({ state: "unknown" }), true);
+  assert.equal(isUnavailable({ state: "heat" }), false);
+  assert.equal(isUnavailable(undefined), true);
+});
+
+test("moduleLabel: rssi_<slug> attribute back to the module's name", () => {
+  const names = ["Hauptmodul", "Büro", "Obergeschoss Süd"];
+  assert.equal(moduleLabel("rssi_buro", names), "Büro");
+  assert.equal(moduleLabel("rssi_obergeschoss_sud", names), "Obergeschoss Süd");
+  assert.equal(moduleLabel("rssi_hauptmodul", names), "Hauptmodul");
+  assert.equal(moduleLabel("rssi_unbekannt", names), "unbekannt");
 });

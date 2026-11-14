@@ -2,7 +2,7 @@
 // Eine Datei ohne Build-Schritt. Oben die reinen Funktionen (exportiert, mit node --test
 // geprüft), unten die Karte, das Pop-up und der Editor (nur im Browser).
 
-export const VERSION = "0.1.0";
+export const VERSION = "0.1.1";
 
 // Wochentage, wie eq3_max sie speichert und der Dienst set_week_profile sie nimmt.
 export const WEEKDAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
@@ -73,7 +73,7 @@ const EN = {
   "Entität {entity} nicht gefunden.": "Entity {entity} not found.",
   "Entität": "Entity", "Layout": "Layout", "Name (optional)": "Name (optional)", "Modus-Knöpfe zeigen": "Show mode buttons",
   "kompakt": "compact", "ring": "ring", "kachel": "tile",
-  "Ist {value} °C": "Now {value} °C",
+  "Ist {value} °C": "Now {value} °C", "nicht verfügbar": "unavailable",
   "Temperatur für die Komfort-Taste am Gerät und das Preset „Komfort“. Gilt für den ganzen Raum.": "Temperature of the comfort button on the device and of the preset \"Comfort\". Applies to the whole room.",
   "Absenktemperatur für die Eco-Taste, den Eco-Taster und das Preset „Eco“. Gilt für den ganzen Raum.": "Setback temperature of the eco button, the eco push button and the preset \"Eco\". Applies to the whole room.",
   "Höchster Sollwert, der sich am Gerät einstellen lässt.": "Highest target that can be set on the device.",
@@ -211,6 +211,23 @@ export function ringTemperature(dx, dy) {
 export function ringAngle(temperature) {
   const frac = (Math.min(MAX_TEMP, Math.max(MIN_TEMP, Number(temperature))) - MIN_TEMP) / (MAX_TEMP - MIN_TEMP);
   return 135 + frac * 270;
+}
+
+/** The thermostat cannot be shown or operated (Home Assistant has no state for it). */
+export function isUnavailable(climate) {
+  return !climate || climate.state === "unavailable" || climate.state === "unknown";
+}
+
+function slug(text) {
+  // Like Home Assistant's slugify for the attribute keys rssi_<module>: ü → u, others → _.
+  return String(text).normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+/** Name of the radio module behind an attribute key rssi_<slug>; the slug if unknown. */
+export function moduleLabel(key, names) {
+  const s = String(key).replace(/^rssi_/, "");
+  return (names || []).find((name) => slug(name) === s) ?? s;
 }
 
 /** Numeric value of a number entity's state; null while unknown/unavailable. */
@@ -385,6 +402,7 @@ const STYLE = `
   .vbar > span { position: absolute; left: 0; right: 0; bottom: 0; background: var(--tone); border-radius: 5px; }
   .vcol ha-icon { --mdc-icon-size: 15px; }
   .err { padding: 16px; color: var(--e3-error); }
+  .unavail { display: flex; align-items: center; gap: 8px; color: var(--e3-muted); font-size: 15px; padding: 6px 0 4px; }
 `;
 
 function h(tag, attrs = {}, ...children) {
@@ -591,6 +609,11 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
       this.dispatchEvent(new CustomEvent("hass-notification", { detail: { message }, bubbles: true, composed: true }));
     }
 
+    disconnectedCallback() {
+      // The view changed: the pop-up belongs to this card and goes with it.
+      this._dialog?.close();
+    }
+
     _openDialog() {
       if (!this._dialog) {
         this._dialog = document.createElement("eq3-max-thermostat-dialog");
@@ -612,6 +635,14 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
       root.replaceChildren(h("style", {}, STYLE));
       if (!m) {
         root.append(h("ha-card", {}, h("div", { class: "err" }, t(lang, "Entität {entity} nicht gefunden.", { entity: this._config.entity }))));
+        return;
+      }
+      if (isUnavailable(m.climate)) {
+        const card = h("ha-card", { class: "off" },
+          this._head(lang, m, this._kindText(lang, m)),
+          h("div", { class: "unavail" }, icon("mdi:lan-disconnect"), t(lang, "nicht verfügbar")));
+        card.querySelector(".gear")?.remove();
+        root.append(card);
         return;
       }
       const layout = this._config.layout;
@@ -923,8 +954,19 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
       this._onKey = (ev) => { if (ev.key === "Escape") this.close(); };
     }
 
-    connectedCallback() { document.addEventListener("keydown", this._onKey); }
-    disconnectedCallback() { document.removeEventListener("keydown", this._onKey); }
+    connectedCallback() {
+      document.addEventListener("keydown", this._onKey);
+      // Back button / back gesture closes the pop-up instead of leaving the dashboard.
+      this._onPop = () => { this._historyPushed = false; this.close(); };
+      window.addEventListener("popstate", this._onPop);
+      history.pushState({ ...(history.state || {}), eq3MaxDialog: true }, "");
+      this._historyPushed = true;
+    }
+
+    disconnectedCallback() {
+      document.removeEventListener("keydown", this._onKey);
+      window.removeEventListener("popstate", this._onPop);
+    }
 
     setup(config, hass) {
       this._config = config;
@@ -935,7 +977,9 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
     set hass(hass) {
       this._hass = hass;
       const ents = findEntities(hass, this._config?.entity);
-      const sig = [this._config?.entity, ...Object.values(ents)].map((id) => hass.states[id]?.last_updated || "").join(";");
+      const attrs = hass.states[this._config?.entity]?.attributes || {};
+      const ids = [this._config?.entity, ...Object.values(ents), ...(attrs.fenster || []), ...(attrs.raum || [])];
+      const sig = ids.map((id) => hass.states[id]?.last_updated || "").join(";") + (hass.locale?.language || "");
       if (sig !== this._sig) {
         this._sig = sig;
         // Someone is typing or choosing: rebuild once the field is left.
@@ -952,6 +996,12 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
     }
 
     close() {
+      if (this._closed) return;
+      this._closed = true;
+      window.removeEventListener("popstate", this._onPop);
+      // Closed by X, Escape or backdrop: take our history entry back out.
+      if (this._historyPushed && history.state?.eq3MaxDialog) history.back();
+      this._historyPushed = false;
       this.dispatchEvent(new CustomEvent("closed"));
     }
 
@@ -1105,8 +1155,9 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
       const entry = hass.entities?.[this._config.entity];
       const device = entry?.device_id ? hass.devices?.[entry.device_id] : undefined;
       const rssiAttrs = m.ents.funkmodul ? hass.states[m.ents.funkmodul]?.attributes || {} : {};
+      const moduleNames = m.ents.funkmodul ? hass.states[m.ents.funkmodul]?.attributes?.options || [] : [];
       const perRadio = Object.entries(rssiAttrs).filter(([k, v]) => k.startsWith("rssi_") && v !== null)
-        .map(([k, v]) => `${k.slice(5)}: ${fmt(v, 0)} dBm`);
+        .map(([k, v]) => `${moduleLabel(k, moduleNames)}: ${fmt(v, 0)} dBm`);
       const rows = [
         ["mdi:battery", "Batterie", t(lang, m.lowBattery ? "schwach" : "ok")],
         [RSSI_ICONS[m.level] || "mdi:signal", "Funk", m.rf ? t(lang, "Funkfehler") : perRadio.length ? perRadio.join(", ") : `${fmt(m.rssi, 0)} dBm`],
@@ -1173,6 +1224,11 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
       if (typeof error === "string") return error;
       const localized = error.key && this._hass.localize
         ? this._hass.localize(`component.eq3_max.exceptions.${error.key}.message`, error.placeholders || {}) : "";
+      if (!localized && error.key && this._hass.loadBackendTranslation && !this._loadedExceptions) {
+        // The frontend loads the integration's error texts only on demand.
+        this._loadedExceptions = true;
+        this._hass.loadBackendTranslation("exceptions", "eq3_max").then(() => this._render()).catch(() => {});
+      }
       const missing = Array.isArray(error.missing) && error.missing.length ? ` (${error.missing.map((d) => t(this._lang, d)).join(", ")})` : "";
       return (localized || error.message || "") + missing;
     }

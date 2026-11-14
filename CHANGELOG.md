@@ -6,6 +6,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versions: [Sem
 
 ## [Unreleased]
 
+## [0.1.1] – 2026-11-14
+
+### Fixed
+- An unavailable thermostat shows "unavailable" instead of controls that only produced errors.
+- The pop-up closes with the back button / back gesture, and when the card leaves the view
+  (it stayed open with stale values before).
+- The pop-up's Window tab follows the window contacts and the room's thermostats live.
+- An error while writing the week program is shown in the language of Home Assistant.
+- The Info tab names the radio modules as configured, not by their internal key.
+
 ## [0.1.0] – 2026-11-14
 
 ### Added

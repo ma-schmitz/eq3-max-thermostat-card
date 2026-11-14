@@ -6,6 +6,16 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 
 ## [Unreleased]
 
+## [0.1.1] – 2026-11-14
+
+### Behoben
+- Ein nicht verfügbares Thermostat zeigt „nicht verfügbar“ statt Bedienelementen, die nur Fehler brachten.
+- Das Pop-up schließt mit der Zurück-Taste bzw. -Geste und wenn die Karte aus der Ansicht verschwindet
+  (vorher blieb es mit veralteten Werten offen).
+- Der Reiter Fenster im Pop-up folgt den Fensterkontakten und den Thermostaten des Raums live.
+- Ein Fehler beim Schreiben des Wochenprogramms erscheint in der Sprache von Home Assistant.
+- Der Info-Reiter nennt die Funkmodule mit ihrem Namen statt dem internen Schlüssel.
+
 ## [0.1.0] – 2026-11-14
 
 ### Hinzugefügt
