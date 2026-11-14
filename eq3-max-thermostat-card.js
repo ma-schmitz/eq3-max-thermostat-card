@@ -64,6 +64,7 @@ const EN = {
     "The device does not report its program. Shown is what it acknowledged last. Every day is one radio telegram; with little airtime left a week can take a few minutes.",
   "Letztes Schreiben abgebrochen": "Last write stopped",
   "Gesendet – wartet auf Quittung.": "Sent – waiting for acknowledgement.",
+  "Vom Gerät quittiert.": "Acknowledged by the device.",
   "Wochenprogramm wird geschrieben.": "Week program is being written.",
   "bis": "until", "Montag": "Monday", "Dienstag": "Tuesday", "Mittwoch": "Wednesday", "Donnerstag": "Thursday",
   "Freitag": "Friday", "Samstag": "Saturday", "Sonntag": "Sunday",
@@ -392,7 +393,7 @@ function readModel(hass, config) {
   return {
     climate, attrs, ents, isWall, valve, rssi, rf,
     deviceId: entry?.device_id,
-    name: config.name || attrs.friendly_name || config.entity,
+    name: config.name || device?.name_by_user || device?.name || attrs.friendly_name || config.entity,
     area: areaId ? hass.areas?.[areaId]?.name : undefined,
     current: num(attrs.current_temperature),
     target: num(attrs.temperature),
@@ -826,6 +827,7 @@ const DIALOG_STYLE = `
   .note { margin-top: 10px; padding: 8px 10px; border-radius: 8px; font-size: 12.5px; background: color-mix(in srgb, var(--e3-accent) 10%, transparent); }
   .note.bad { background: color-mix(in srgb, var(--e3-error) 12%, transparent); color: var(--e3-error); }
   .note.warn { background: color-mix(in srgb, var(--e3-open) 14%, transparent); }
+  .note.ok { background: color-mix(in srgb, var(--e3-ok) 14%, transparent); color: var(--e3-ok); display: flex; align-items: center; gap: 4px; }
   .grid2 { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; font-size: 13.5px; }
   .grid2 .key { color: var(--e3-muted); display: inline-flex; gap: 6px; align-items: center; }
   .week { display: grid; grid-template-columns: 30px 1fr; gap: 6px 8px; align-items: center; font-size: 12.5px; }
@@ -1002,7 +1004,17 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
             : t(lang, "keiner")));
       }
       if (!editable) extra.push(h("div", { class: "note warn" }, t(lang, "Nur Anzeige: Änderungen sind für dein Konto gesperrt (Option der Integration).")));
-      if (this._message) extra.push(h("div", { class: `note${this._message.bad ? " bad" : ""}` }, this._message.text));
+      if (this._message?.sent) {
+        // Sent values are pending until the device acknowledges; then say so.
+        const waiting = (CONFIG_ROWS[tab] || []).some(([key]) => {
+          const st = m.ents[key] ? hass.states[m.ents[key]] : undefined;
+          return st && st.attributes.ausstehend !== null && st.attributes.ausstehend !== undefined;
+        });
+        this._message.text = t(lang, waiting ? "Gesendet – wartet auf Quittung." : "Vom Gerät quittiert.");
+        this._message.ok = !waiting;
+      }
+      if (this._message) extra.push(h("div", { class: `note${this._message.bad ? " bad" : this._message.ok ? " ok" : ""}` },
+        this._message.ok ? icon("mdi:check-circle") : null, " ", this._message.text));
       const changes = changedValues(original, Object.fromEntries(Object.entries(drafts).filter(([k]) => k in original)));
       const n = Object.keys(changes).length;
       const foot = editable ? h("div", { class: "foot" },
@@ -1023,7 +1035,7 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
           else await this._hass.callService("number", "set_value", { entity_id: id, value: Number(value) });
           delete this._drafts[key];
         }
-        this._message = { text: t(this._lang, "Gesendet – wartet auf Quittung."), bad: false };
+        this._message = { text: t(this._lang, "Gesendet – wartet auf Quittung."), bad: false, sent: true };
       } catch (err) {
         this._message = { text: err?.message || String(err), bad: true };
       } finally {
