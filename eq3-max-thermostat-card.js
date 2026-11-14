@@ -74,6 +74,10 @@ const EN = {
   "Entität": "Entity", "Layout": "Layout", "Name (optional)": "Name (optional)", "Modus-Knöpfe zeigen": "Show mode buttons",
   "kompakt": "compact", "ring": "ring", "kachel": "tile",
   "Ist {value} °C": "Now {value} °C",
+  "Ist-Temperatur abfragen": "Poll current temperature",
+  "Kurzer Anstoß (Sollwert +0,5 °C bis zur Meldung) – kostet Batterie": "Short nudge (target +0.5 °C until it reports) – costs battery",
+  "alle 15 min": "every 15 min", "alle 30 min": "every 30 min", "stündlich": "every hour",
+  "alle 2 Stunden": "every 2 hours", "alle 4 Stunden": "every 4 hours",
   "Die Endzeiten müssen von oben nach unten steigen.": "End times must rise from top to bottom.",
   "Endzeiten nur in 5-Minuten-Schritten.": "End times only in steps of 5 minutes.", "Seriennummer": "Serial number", "Firmware": "Firmware", "Hauptmodul": "Main module",
 };
@@ -242,10 +246,12 @@ const SELECT_DAYS = {
   thursday: "Donnerstag", friday: "Freitag",
 };
 const DISPLAY_OPTIONS = { setpoint: "Soll-Temperatur", actual: "Ist-Temperatur" };
+const POLL_OPTIONS = { off: "aus", 15: "alle 15 min", 30: "alle 30 min", 60: "stündlich", 120: "alle 2 Stunden", 240: "alle 4 Stunden" };
 const CONFIG_ROWS = {
   temp: [
     ["komfort", "Komforttemperatur"], ["eco", "Eco-Temperatur"], ["maximal", "Maximaltemperatur", "Grenze am Drehrad"],
     ["minimal", "Minimaltemperatur"], ["offset", "Temperatur-Offset", "Korrektur der Messung"],
+    ["ist_abfragen", "Ist-Temperatur abfragen", "Kurzer Anstoß (Sollwert +0,5 °C bis zur Meldung) – kostet Batterie"],
   ],
   window: [["fenster_temperatur", "Fenster-auf-Temperatur"], ["fenster_dauer", "Fenster-auf-Dauer", "0 = Erkennung aus"]],
   boost: [
@@ -944,6 +950,7 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
     _optionLabel(lang, key, option) {
       if (key === "entkalkung_tag" && SELECT_DAYS[option]) return t(lang, SELECT_DAYS[option]);
       if (key === "anzeige" && DISPLAY_OPTIONS[option]) return t(lang, DISPLAY_OPTIONS[option]);
+      if (key === "ist_abfragen" && POLL_OPTIONS[option]) return t(lang, POLL_OPTIONS[option]);
       return option;
     }
 
