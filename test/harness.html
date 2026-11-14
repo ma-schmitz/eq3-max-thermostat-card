@@ -127,6 +127,7 @@
     dlg._tab = q.get("tab") || "temp";
     if (q.get("day")) dlg._editDay({ day: q.get("day"), known: q.get("day") === "Montag", segments: q.get("day") === "Montag" ? [{ from: "00:00", to: "06:00", temperature: 17 }, { from: "06:00", to: "22:00", temperature: 21 }, { from: "22:00", to: "24:00", temperature: 17 }] : [] });
     dlg._drafts = q.get("draft") ? { komfort: 22 } : {};
+    if (q.get("help")) dlg._help = q.get("help");
     dlg._render();
     if (q.get("selftest") === "scroll") {
       setTimeout(() => {

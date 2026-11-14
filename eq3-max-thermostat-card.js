@@ -74,6 +74,22 @@ const EN = {
   "Entität": "Entity", "Layout": "Layout", "Name (optional)": "Name (optional)", "Modus-Knöpfe zeigen": "Show mode buttons",
   "kompakt": "compact", "ring": "ring", "kachel": "tile",
   "Ist {value} °C": "Now {value} °C",
+  "Temperatur für die Komfort-Taste am Gerät und das Preset „Komfort“. Gilt für den ganzen Raum.": "Temperature of the comfort button on the device and of the preset \"Comfort\". Applies to the whole room.",
+  "Absenktemperatur für die Eco-Taste, den Eco-Taster und das Preset „Eco“. Gilt für den ganzen Raum.": "Setback temperature of the eco button, the eco push button and the preset \"Eco\". Applies to the whole room.",
+  "Höchster Sollwert, der sich am Gerät einstellen lässt.": "Highest target that can be set on the device.",
+  "Niedrigster Sollwert, der sich am Gerät einstellen lässt.": "Lowest target that can be set on the device.",
+  "Korrigiert die gemessene Temperatur, z. B. −1 K, wenn das Thermostat direkt am Heizkörper zu warm misst.": "Corrects the measured temperature, e.g. −1 K if the thermostat measures too warm right at the radiator.",
+  "Sollwert, solange ein Fenster offen ist – über einen Fensterkontakt oder die eigene Erkennung des Thermostats.": "Target while a window is open – from a window contact or the thermostat's own detection.",
+  "So lange gilt die Fenster-auf-Temperatur, wenn das Thermostat selbst einen Temperatursturz erkennt. 0 = eigene Erkennung aus (ein Fensterkontakt wirkt weiter).": "How long the window-open temperature applies when the thermostat itself detects a temperature drop. 0 = own detection off (a window contact still works).",
+  "Wie lange Boost das Ventil weit öffnet. Der Wandthermostat zählt seine Anzeige danach herunter.": "How long boost opens the valve wide. The wall thermostat counts its display down by it.",
+  "Ventilöffnung während Boost.": "Valve opening during boost.",
+  "Wochentag der Ventilfahrt gegen Festsitzen (Entkalkung).": "Weekday of the valve run against sticking (decalcification).",
+  "Uhrzeit der wöchentlichen Ventilfahrt.": "Hour of the weekly valve run.",
+  "Größte Ventilöffnung – begrenzt die Heizleistung dieses Heizkörpers.": "Largest valve opening – limits the heat output of this radiator.",
+  "Verschiebt die Ventilstellung, z. B. bei Ventilen, die erst spät öffnen.": "Shifts the valve position, e.g. for valves that open late.",
+  "Was das Display des Wandthermostats zeigt. Am Gerät ist das Menü gesperrt, solange es an einer Zentrale hängt.": "What the wall thermostat's display shows. Its menu is locked while it is paired with a central.",
+  "Der Heizkörper meldet seine Ist-Temperatur nur, wenn sich bei ihm etwas ändert. eq3_max stößt ihn in diesem Abstand an (Sollwert +0,5 °C bis zur Meldung, etwa 1 min, dann zurück). Kostet zwei Telegramme und etwas Batterie; ausgelassen, wenn er von selbst gemeldet hat.": "The radiator reports its current temperature only when something changes on it. eq3_max nudges it at this interval (target +0.5 °C until it reports, about 1 min, then back). Costs two telegrams and some battery; skipped when it reported by itself.",
+  "Erklärung": "Explanation", "Verlauf": "History",
   "Ist-Temperatur abfragen": "Poll current temperature",
   "Kurzer Anstoß (Sollwert +0,5 °C bis zur Meldung) – kostet Batterie": "Short nudge (target +0.5 °C until it reports) – costs battery",
   "alle 15 min": "every 15 min", "alle 30 min": "every 30 min", "stündlich": "every hour",
@@ -260,6 +276,23 @@ const CONFIG_ROWS = {
     ["anzeige", "Anzeige"],
   ],
 };
+const CONFIG_HELP = {
+  komfort: "Temperatur für die Komfort-Taste am Gerät und das Preset „Komfort“. Gilt für den ganzen Raum.",
+  eco: "Absenktemperatur für die Eco-Taste, den Eco-Taster und das Preset „Eco“. Gilt für den ganzen Raum.",
+  maximal: "Höchster Sollwert, der sich am Gerät einstellen lässt.",
+  minimal: "Niedrigster Sollwert, der sich am Gerät einstellen lässt.",
+  offset: "Korrigiert die gemessene Temperatur, z. B. −1 K, wenn das Thermostat direkt am Heizkörper zu warm misst.",
+  fenster_temperatur: "Sollwert, solange ein Fenster offen ist – über einen Fensterkontakt oder die eigene Erkennung des Thermostats.",
+  fenster_dauer: "So lange gilt die Fenster-auf-Temperatur, wenn das Thermostat selbst einen Temperatursturz erkennt. 0 = eigene Erkennung aus (ein Fensterkontakt wirkt weiter).",
+  boost_dauer: "Wie lange Boost das Ventil weit öffnet. Der Wandthermostat zählt seine Anzeige danach herunter.",
+  boost_ventil: "Ventilöffnung während Boost.",
+  entkalkung_tag: "Wochentag der Ventilfahrt gegen Festsitzen (Entkalkung).",
+  entkalkung_stunde: "Uhrzeit der wöchentlichen Ventilfahrt.",
+  ventil_max: "Größte Ventilöffnung – begrenzt die Heizleistung dieses Heizkörpers.",
+  ventil_offset: "Verschiebt die Ventilstellung, z. B. bei Ventilen, die erst spät öffnen.",
+  anzeige: "Was das Display des Wandthermostats zeigt. Am Gerät ist das Menü gesperrt, solange es an einer Zentrale hängt.",
+  ist_abfragen: "Der Heizkörper meldet seine Ist-Temperatur nur, wenn sich bei ihm etwas ändert. eq3_max stößt ihn in diesem Abstand an (Sollwert +0,5 °C bis zur Meldung, etwa 1 min, dann zurück). Kostet zwei Telegramme und etwas Batterie; ausgelassen, wenn er von selbst gemeldet hat.",
+};
 const RSSI_ICONS = { good: "mdi:signal-cellular-3", mid: "mdi:signal-cellular-2", weak: "mdi:signal-cellular-1", off: "mdi:signal-off" };
 
 const STYLE = `
@@ -295,6 +328,7 @@ const STYLE = `
   .gear:hover { background: color-mix(in srgb, var(--e3-muted) 14%, transparent); }
   .gear ha-icon { --mdc-icon-size: 20px; }
   .temps { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .cur, .valve, .vcol { cursor: pointer; }
   .cur { font-size: 34px; letter-spacing: -.02em; line-height: 1; white-space: nowrap; }
   .cur small { font-size: 15px; color: var(--e3-muted); margin-left: 2px; }
   .stepper { display: inline-flex; align-items: center; gap: 2px; border-radius: 999px; padding: 3px; background: color-mix(in srgb, var(--tone) 12%, transparent); }
@@ -547,6 +581,12 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
       }
     }
 
+    _moreInfo(entityId) {
+      // Home Assistant's own dialog with history graph.
+      if (!entityId) return;
+      this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId }, bubbles: true, composed: true }));
+    }
+
     _toast(message) {
       this.dispatchEvent(new CustomEvent("hass-notification", { detail: { message }, bubbles: true, composed: true }));
     }
@@ -642,11 +682,11 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
       return h("ha-card", {},
         this._head(lang, m, this._kindText(lang, m)),
         h("div", { class: "temps" },
-          h("div", { class: "cur" }, fmt(m.current), h("small", {}, "°C")),
+          h("div", { class: "cur", title: t(lang, "Verlauf"), onclick: () => this._moreInfo(this._config.entity) }, fmt(m.current), h("small", {}, "°C")),
           this._stepper(m)),
         this._away(lang, m),
         this._modes(lang, m),
-        m.isWall ? null : h("div", { class: "valve" }, icon("mdi:valve"), t(lang, "Ventil"),
+        m.isWall ? null : h("div", { class: "valve", title: t(lang, "Verlauf"), onclick: () => this._moreInfo(m.ents.ventil) }, icon("mdi:valve"), t(lang, "Ventil"),
           h("div", { class: "meter" }, h("span", { style: { width: `${m.valve ?? 0}%` } })), `${m.valve ?? "–"} %`),
         this._foot(lang, m));
     }
@@ -705,7 +745,8 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
       svg.addEventListener("pointerdown", (ev) => {
         const { dx, dy } = pick(ev);
         const dist = Math.hypot(dx, dy);
-        if (dist < 55 || dist > 100) return; // only the ring band, not the centre
+        if (dist < 55) { this._moreInfo(this._config.entity); return; } // centre: history
+        if (dist > 100) return; // only the ring band
         ev.preventDefault();
         svg.setPointerCapture(ev.pointerId);
         this._drag = true;
@@ -756,13 +797,13 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
         h("div", { class: "left" },
           this._head(lang, m, this._stateText(lang, m)),
           h("div", { class: "temps" },
-            h("div", { class: "cur" }, fmt(m.current), h("small", {}, "°C")),
+            h("div", { class: "cur", title: t(lang, "Verlauf"), onclick: () => this._moreInfo(this._config.entity) }, fmt(m.current), h("small", {}, "°C")),
             this._stepper(m, false)),
           this._away(lang, m),
           this._modes(lang, m, true)),
         h("div", { class: "right" }, symbols(lang, m).slice(0, 6).map((s) =>
           h("span", { class: `sym ${s.cls}`, title: s.title }, icon(s.icon)))),
-        m.isWall ? null : h("div", { class: "vcol", title: t(lang, "Ventil") },
+        m.isWall ? null : h("div", { class: "vcol", title: t(lang, "Ventil"), onclick: () => this._moreInfo(m.ents.ventil) },
           h("div", { class: "vbar" }, h("span", { style: { height: `${m.valve ?? 0}%` } })),
           icon("mdi:valve"), `${m.valve ?? "–"} %`));
     }
@@ -815,6 +856,9 @@ const DIALOG_STYLE = `
   .row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid color-mix(in srgb, var(--e3-divider) 50%, transparent); flex-wrap: wrap; }
   .row:last-child { border-bottom: 0; }
   .row .l { flex: 1; font-size: 14px; min-width: 140px; } .row .l small { display: block; color: var(--e3-muted); font-size: 11.5px; }
+  .info { border: 0; background: none; color: var(--e3-muted); cursor: pointer; padding: 0 2px; vertical-align: middle; display: inline-flex; }
+  .info ha-icon { --mdc-icon-size: 15px; }
+  .help { font-size: 12.5px; color: var(--e3-muted); background: color-mix(in srgb, var(--e3-accent) 8%, transparent); border-radius: 8px; padding: 6px 10px; margin-top: 4px; }
   .chip { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 500; margin-left: 4px; vertical-align: middle; }
   .chip.room { background: color-mix(in srgb, var(--e3-accent) 12%, transparent); color: var(--e3-accent); }
   .chip.warn { background: color-mix(in srgb, var(--e3-open) 16%, transparent); color: var(--e3-open); }
@@ -995,11 +1039,14 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
         }
         const pending = st.attributes.ausstehend;
         rows.push(h("div", { class: "row" },
-          h("div", { class: "l" }, t(lang, label),
+          h("div", { class: "l", title: CONFIG_HELP[key] ? t(lang, CONFIG_HELP[key]) : null }, t(lang, label),
+            CONFIG_HELP[key] ? h("button", { class: "info", title: t(lang, "Erklärung"), "aria-label": t(lang, "Erklärung"),
+              onclick: () => { this._help = this._help === key ? null : key; this._render(); } }, icon("mdi:information-outline")) : null,
             ROOM_KEYS.includes(key) ? h("span", { class: "chip room" }, t(lang, "gilt für den Raum")) : null,
             pending !== null && pending !== undefined
               ? h("span", { class: "chip warn" }, t(lang, "ausstehend: {value}", { value: isSelect ? this._optionLabel(lang, key, pending) : pending })) : null,
-            hint ? h("small", {}, t(lang, hint)) : null),
+            hint ? h("small", {}, t(lang, hint)) : null,
+            this._help === key && CONFIG_HELP[key] ? h("div", { class: "help" }, t(lang, CONFIG_HELP[key])) : null),
           control));
       }
       const extra = [];
