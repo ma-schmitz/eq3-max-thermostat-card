@@ -283,6 +283,13 @@ const STYLE = `
   .mode ha-icon { --mdc-icon-size: 15px; }
   .mode.on { background: var(--tone); color: var(--text-primary-color, #fff); border-color: var(--tone); }
   .mode.icon { padding: 5px 8px; }
+  /* Narrow cards (sections dashboard, phone): modes as symbols in one row. */
+  ha-card { container-type: inline-size; }
+  @container (max-width: 340px) {
+    .mode .lbl { display: none; }
+    .mode { padding: 5px 8px; flex: 1; justify-content: center; }
+    .modes { flex-wrap: nowrap; }
+  }
   .valve { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--e3-muted); }
   .meter { flex: 1; height: 6px; border-radius: 3px; background: var(--e3-divider); overflow: hidden; }
   .meter > span { display: block; height: 100%; border-radius: 3px; background: var(--tone); transition: width .3s; }
@@ -497,9 +504,10 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
 
     getGridOptions() {
       return {
-        kompakt: { columns: 6, rows: 4, min_columns: 6, min_rows: 4 },
-        ring: { columns: 6, rows: 7, min_columns: 6, min_rows: 6 },
-        kachel: { columns: 12, rows: 3, min_columns: 9, min_rows: 3 },
+        // Height follows the content (modes wrap, wall thermostats have no valve row).
+        kompakt: { columns: 6, rows: "auto", min_columns: 6 },
+        ring: { columns: 6, rows: "auto", min_columns: 6 },
+        kachel: { columns: 12, rows: "auto", min_columns: 9 },
       }[this._config?.layout] || { columns: 6, rows: 4 };
     }
 
@@ -597,7 +605,7 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
           class: `mode${active === mode.id ? " on" : ""}${iconsOnly ? " icon" : ""}`,
           title: t(lang, mode.label),
           onclick: () => this._call(() => setMode(this._hass, this._config.entity, mode.id)),
-        }, icon(mode.icon), iconsOnly ? null : t(lang, mode.label))));
+        }, icon(mode.icon), iconsOnly ? null : h("span", { class: "lbl" }, t(lang, mode.label)))));
     }
 
     _away(lang, m) {
