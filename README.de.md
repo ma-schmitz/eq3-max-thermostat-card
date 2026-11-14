@@ -5,11 +5,23 @@
 Eine Lovelace-Karte für MAX!-Heizkörper- und Wandthermostate der Integration
 [eq3_max](https://github.com/ma-schmitz/eq3_max) (braucht **eq3_max 0.8.0 oder neuer**).
 
+![Layout kompakt](docs/images/card-kompakt-de-light.png)
+
+| Ring – zum Ziehen | Kachel |
+|---|---|
+| ![Layout Ring](docs/images/card-ring-de-light.png) | ![Layout Kachel](docs/images/card-kachel-de-light.png) |
+
+| Einstellungen im Pop-up | Wochenprogramm |
+|---|---|
+| ![Einstellungen](docs/images/popup-temp-de-light.png) | ![Wochenprogramm](docs/images/popup-week-de-light.png) |
+
 - Ist- und Solltemperatur, −/+ und die Modi Manuell, Auto, Komfort, Eco, Boost, Aus
 - Ventilstellung, Batterie, Funkempfang, verknüpftes Fenster, Verknüpfungen, Bediensperre und ausstehende Befehle als Symbole
 - Einstellungen im Pop-up, ohne das Dashboard zu verlassen: Temperaturen, Fenster, Boost & Ventil
   (Wandthermostat: Boost & Anzeige Soll/Ist), **Wochenprogramm** und Geräteinfo
-- Drei Layouts: `kompakt` (Standard), `ring`, `kachel`
+- Drei Layouts: `kompakt` (Standard), `ring` (Sollwert durch Ziehen oder Tippen am Ring), `kachel`
+- Klick auf Ist-Temperatur oder Ventil öffnet den Verlauf von Home Assistant
+- Jede Einstellung per Mouseover und ⓘ erklärt
 - Deutsch und Englisch, folgt Sprache und Theme von Home Assistant
 
 ## Installation

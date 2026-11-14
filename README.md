@@ -5,11 +5,23 @@
 A Lovelace card for eQ-3 MAX! radiator and wall thermostats of the
 [eq3_max](https://github.com/ma-schmitz/eq3_max) integration (requires **eq3_max 0.8.0 or newer**).
 
+![Compact layout](docs/images/card-kompakt-en-light.png)
+
+| Ring – drag to set | Tile |
+|---|---|
+| ![Ring layout](docs/images/card-ring-en-light.png) | ![Tile layout](docs/images/card-kachel-en-light.png) |
+
+| Settings pop-up | Week program |
+|---|---|
+| ![Settings](docs/images/popup-temp-en-light.png) | ![Week program](docs/images/popup-week-en-light.png) |
+
 - Current and target temperature, −/+ and the modes Manual, Auto, Comfort, Eco, Boost, Off
 - Valve position, battery, radio reception, linked window, links, operation lock and pending commands as symbols
 - Settings in a pop-up, without leaving the dashboard: temperatures, window, boost & valve
   (wall thermostat: boost & display set/current), **week program** and device info
-- Three layouts: `kompakt` (default), `ring`, `kachel` (tile)
+- Three layouts: `kompakt` (default), `ring` (drag or tap the ring to set the target), `kachel` (tile)
+- Click the current temperature or the valve for Home Assistant's history graph
+- Every setting explained on hover and with ⓘ
 - German and English, follows the Home Assistant language and theme
 
 ## Installation
