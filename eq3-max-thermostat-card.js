@@ -1148,7 +1148,15 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
       if (error && !writing.length) parts.push(h("div", { class: "note bad" }, `${t(lang, "Letztes Schreiben abgebrochen")}: ${this._errorText(error)}`));
       parts.push(h("div", { class: "note" }, t(lang, "Das Gerät meldet sein Programm nicht. Gezeigt wird, was es zuletzt quittiert hat. Jeder Tag ist ein Funktelegramm; bei knappem Funkbudget kann eine Woche einige Minuten dauern.")));
       if (!editable) parts.push(h("div", { class: "note warn" }, t(lang, "Nur Anzeige: Änderungen sind für dein Konto gesperrt (Option der Integration).")));
-      if (this._message) parts.push(h("div", { class: `note${this._message.bad ? " bad" : ""}` }, this._message.text));
+      if (this._message?.writing) {
+        // Started writing; once no day is open any more, say so (or show the error above).
+        if (writing.length) this._message.seen = true;
+        if ((this._message.seen || Date.now() - this._message.started > 5000) && !writing.length) {
+          this._message = error ? null : { text: t(lang, "Vom Gerät quittiert."), ok: true };
+        }
+      }
+      if (this._message) parts.push(h("div", { class: `note${this._message.bad ? " bad" : this._message.ok ? " ok" : ""}` },
+        this._message.ok ? icon("mdi:check-circle") : null, " ", this._message.text));
       let foot = null;
       if (editable && w) {
         const n = w.targets.size;
@@ -1260,7 +1268,7 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
           profile: segmentsToProfile(w.segments),
         });
         this._week = null;
-        this._message = { text: t(this._lang, "Wochenprogramm wird geschrieben."), bad: false };
+        this._message = { text: t(this._lang, "Wochenprogramm wird geschrieben."), bad: false, writing: true, started: Date.now() };
       } catch (err) {
         this._message = { text: err?.message || String(err), bad: true };
       } finally {
