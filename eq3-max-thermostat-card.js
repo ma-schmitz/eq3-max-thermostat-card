@@ -175,6 +175,23 @@ export function baseTarget(attrs) {
   return pending !== null ? pending : num(attrs?.temperature);
 }
 
+/** Temperature for a point (dx, dy) relative to the ring centre (screen coordinates, y down).
+ *  The arc starts at 135° (bottom left) and runs 270° clockwise; the gap below snaps to the
+ *  nearer end. */
+export function ringTemperature(dx, dy) {
+  const angle = ((Math.atan2(dy, dx) * 180) / Math.PI + 360) % 360;
+  let rel = (angle - 135 + 360) % 360;
+  if (rel > 270) rel = rel > 315 ? 0 : 270;
+  const value = MIN_TEMP + (rel / 270) * (MAX_TEMP - MIN_TEMP);
+  return Math.min(MAX_TEMP, Math.max(MIN_TEMP, Math.round(value * 2) / 2));
+}
+
+/** Angle (degrees, 135..405) of a temperature on the ring, for the handle. */
+export function ringAngle(temperature) {
+  const frac = (Math.min(MAX_TEMP, Math.max(MIN_TEMP, Number(temperature))) - MIN_TEMP) / (MAX_TEMP - MIN_TEMP);
+  return 135 + frac * 270;
+}
+
 /** Numeric value of a number entity's state; null while unknown/unavailable. */
 export function configNumber(stateObj) {
   return num(stateObj?.state);
@@ -309,8 +326,8 @@ const STYLE = `
   .sym.bad { background: color-mix(in srgb, var(--e3-error) 14%, transparent); color: var(--e3-error); }
   /* Ring */
   .ring { position: relative; width: 190px; height: 190px; margin: 0 auto; }
-  .ring svg { position: absolute; inset: 0; }
-  .ring .c { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+  .ring svg { position: absolute; inset: 0; touch-action: none; cursor: pointer; }
+  .ring .c { pointer-events: none; position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
   .ring .big { font-size: 40px; font-weight: 500; letter-spacing: -.02em; }
   .ring .sub { font-size: 13px; color: var(--e3-muted); display: inline-flex; gap: 3px; align-items: center; }
   .ring .sub ha-icon { --mdc-icon-size: 14px; }
@@ -491,7 +508,7 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
         const s = hass.states[id];
         return s ? `${s.state}|${s.last_updated}` : "";
       }).join(";") + hass.locale?.language;
-      if (sig !== this._sig) {
+      if (sig !== this._sig && !this._drag) {
         this._sig = sig;
         this._render();
       }
@@ -637,7 +654,8 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
     }
 
     _ring(lang, m) {
-      const frac = m.target === null ? 0 : (m.target - MIN_TEMP) / (MAX_TEMP - MIN_TEMP);
+      const ringTarget = baseTarget(m.attrs);
+      const frac = ringTarget === null ? 0 : (ringTarget - MIN_TEMP) / (MAX_TEMP - MIN_TEMP);
       const ns = "http://www.w3.org/2000/svg";
       const svg = document.createElementNS(ns, "svg");
       svg.setAttribute("viewBox", "0 0 190 190");
@@ -648,11 +666,62 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
         svg.append(c);
       };
       circle(80, 12, "var(--e3-divider)", arc(80, 1));
-      if (m.hvac !== "off") circle(80, 12, "var(--tone)", arc(80, frac));
+      // Always drawn (empty when off): the drag code addresses it as the second circle.
+      circle(80, 12, "var(--tone)", arc(80, m.hvac === "off" ? 0 : frac));
       if (!m.isWall) {
         circle(64, 5, "var(--e3-divider)", arc(64, 1));
         if ((m.valve ?? 0) > 0) circle(64, 5, "color-mix(in srgb, var(--tone) 60%, transparent)", arc(64, (m.valve ?? 0) / 100));
       }
+      // Drag along the ring (or tap it) to set the target; sent when let go.
+      const shown = baseTarget(m.attrs);
+      const handle = document.createElementNS(ns, "circle");
+      const placeHandle = (temperature) => {
+        const rad = (ringAngle(temperature ?? MIN_TEMP) * Math.PI) / 180;
+        for (const [k, v] of Object.entries({ cx: 95 + 80 * Math.cos(rad), cy: 95 + 80 * Math.sin(rad), r: 9,
+          fill: "var(--e3-card)", stroke: "var(--tone)", "stroke-width": 4 })) handle.setAttribute(k, v);
+      };
+      placeHandle(m.hvac === "off" ? MIN_TEMP : shown);
+      svg.append(handle);
+      const valueArc = svg.querySelectorAll("circle")[1];
+      const pick = (ev) => {
+        const rect = svg.getBoundingClientRect();
+        const scale = 190 / rect.width;
+        return { dx: (ev.clientX - rect.left) * scale - 95, dy: (ev.clientY - rect.top) * scale - 95 };
+      };
+      const show = (temperature) => {
+        this._dragValue = temperature;
+        placeHandle(temperature);
+        if (valueArc) valueArc.setAttribute("stroke-dasharray", arc(80, (temperature - MIN_TEMP) / (MAX_TEMP - MIN_TEMP)));
+        const big = this.shadowRoot.querySelector(".ring .big");
+        if (big) big.textContent = `${fmt(temperature)}°`;
+      };
+      svg.addEventListener("pointerdown", (ev) => {
+        const { dx, dy } = pick(ev);
+        const dist = Math.hypot(dx, dy);
+        if (dist < 55 || dist > 100) return; // only the ring band, not the centre
+        ev.preventDefault();
+        svg.setPointerCapture(ev.pointerId);
+        this._drag = true;
+        show(ringTemperature(dx, dy));
+      });
+      svg.addEventListener("pointermove", (ev) => {
+        if (!this._drag) return;
+        const { dx, dy } = pick(ev);
+        show(ringTemperature(dx, dy));
+      });
+      const drop = () => {
+        if (!this._drag) return;
+        this._drag = false;
+        const target = this._dragValue;
+        this._sig = ""; // states that came in meanwhile are drawn now
+        if (target !== undefined && target !== shown) {
+          this._call(() => this._hass.callService("climate", "set_temperature", { entity_id: this._config.entity, temperature: target }));
+        } else {
+          this._render();
+        }
+      };
+      svg.addEventListener("pointerup", drop);
+      svg.addEventListener("pointercancel", drop);
       const step = (dir) => this._step(dir);
       return h("ha-card", {},
         this._head(lang, m, this._stateText(lang, m)),

@@ -15,6 +15,8 @@ import {
   baseTarget,
   profileErrors,
   configNumber,
+  ringTemperature,
+  ringAngle,
   FACTORY_WEEK_PROFILE,
   WEEKDAYS,
   ROOM_KEYS,
@@ -171,4 +173,23 @@ test("configNumber: unknown/unavailable states are no number", () => {
   assert.equal(configNumber({ state: "unknown" }), null);
   assert.equal(configNumber({ state: "unavailable" }), null);
   assert.equal(configNumber(undefined), null);
+});
+
+
+test("ringTemperature maps the 270° arc to 4.5..30.5 in 0.5 steps", () => {
+  // Arc starts bottom-left (135°), runs clockwise over the top to bottom-right (45°).
+  const at = (deg) => ringTemperature(Math.cos((deg * Math.PI) / 180), Math.sin((deg * Math.PI) / 180));
+  assert.equal(at(135), 4.5);
+  assert.equal(at(270), 17.5); // top: half way
+  assert.equal(at(45), 30.5);
+  assert.equal(at(90), 30.5); // gap below, nearer the end
+  assert.equal(at(80), 30.5);
+  assert.equal(at(100), 4.5);
+  assert.equal(at(120), 4.5); // gap below, nearer the start
+});
+
+test("ringAngle is the inverse for the handle", () => {
+  assert.equal(ringAngle(4.5), 135);
+  assert.equal(ringAngle(30.5), 405);
+  assert.equal(ringAngle(17.5), 270);
 });

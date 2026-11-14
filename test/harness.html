@@ -104,6 +104,22 @@
     add({ entity: "climate.ht_wz", layout: "kachel" }, true), add({ entity: "climate.ht_ez", layout: "kachel" }, true),
   ];
   const q = new URLSearchParams(location.search);
+  if (q.get("selftest") === "ring") {
+    // Drag on the ring of card 3 (ring layout) from the top to the right end.
+    setTimeout(() => {
+      const card = window.cards[3];
+      const svg = card.shadowRoot.querySelector(".ring svg");
+      const r = svg.getBoundingClientRect();
+      const at = (deg) => ({ clientX: r.left + r.width / 2 + Math.cos(deg * Math.PI / 180) * r.width * 80 / 190,
+        clientY: r.top + r.height / 2 + Math.sin(deg * Math.PI / 180) * r.height * 80 / 190, pointerId: 1, bubbles: true });
+      svg.setPointerCapture = () => {};
+      svg.dispatchEvent(new PointerEvent("pointerdown", at(270)));
+      const during = card.shadowRoot.querySelector(".ring .big").textContent;
+      svg.dispatchEvent(new PointerEvent("pointermove", at(0)));
+      svg.dispatchEvent(new PointerEvent("pointerup", at(0)));
+      document.body.setAttribute("data-ring", `${during}|${JSON.stringify(hass.calls.at(-1))}`);
+    }, 300);
+  }
   if (q.get("dialog")) {
     const card = window.cards[Number(q.get("dialog"))];
     card._openDialog();
