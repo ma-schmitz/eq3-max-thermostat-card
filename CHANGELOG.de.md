@@ -6,6 +6,10 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 
 ## [Unreleased]
 
+### Hinzugefügt
+- Die Karte wird in der Kartenauswahl („Karte hinzufügen“ → „Nach Entität“) für Klima-Entitäten
+  der Integration eq3_max unter „Community“ vorgeschlagen (Home Assistant ab 2026.6).
+
 ## [0.1.1] – 2026-11-14
 
 ### Behoben
