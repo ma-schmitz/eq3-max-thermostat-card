@@ -6,6 +6,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versions: [Sem
 
 ## [Unreleased]
 
+### Added
+- Optional `temperature_sensor`: an external sensor replaces the thermostat's current temperature
+  (falls back to the thermostat when unavailable); optional `humidity_sensor` shows the humidity.
+  Both can be picked in the visual editor.
+
 ## [0.1.1] – 2026-11-14
 
 ### Fixed

@@ -18,6 +18,7 @@ import {
   ringTemperature,
   ringAngle,
   isUnavailable,
+  sensorValue,
   moduleLabel,
   FACTORY_WEEK_PROFILE,
   WEEKDAYS,
@@ -210,4 +211,19 @@ test("moduleLabel: rssi_<slug> attribute back to the module's name", () => {
   assert.equal(moduleLabel("rssi_obergeschoss_sud", names), "Obergeschoss Süd");
   assert.equal(moduleLabel("rssi_hauptmodul", names), "Hauptmodul");
   assert.equal(moduleLabel("rssi_unbekannt", names), "unbekannt");
+});
+
+test("sensorValue: external sensor reading, null when unset, unavailable or not numeric", () => {
+  const hass = { states: {
+    "sensor.t": { state: "21.4" },
+    "sensor.off": { state: "unavailable" },
+    "sensor.unk": { state: "unknown" },
+    "sensor.txt": { state: "abc" },
+  } };
+  assert.equal(sensorValue(hass, "sensor.t"), 21.4);
+  assert.equal(sensorValue(hass, undefined), null);
+  assert.equal(sensorValue(hass, "sensor.missing"), null);
+  assert.equal(sensorValue(hass, "sensor.off"), null);
+  assert.equal(sensorValue(hass, "sensor.unk"), null);
+  assert.equal(sensorValue(hass, "sensor.txt"), null);
 });

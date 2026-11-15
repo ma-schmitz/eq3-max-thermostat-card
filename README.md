@@ -20,7 +20,8 @@ A Lovelace card for eQ-3 MAX! radiator and wall thermostats of the
 - Settings in a pop-up, without leaving the dashboard: temperatures, window, boost & valve
   (wall thermostat: boost & display set/current), **week program** and device info
 - Three layouts: `kompakt` (default), `ring` (drag or tap the ring to set the target), `kachel` (tile)
-- Click the current temperature or the valve for Home Assistant's history graph
+- Optional external temperature sensor that replaces the thermostat's own reading, and an optional humidity sensor
+- Click the current temperature, the humidity or the valve for Home Assistant's history graph
 - Every setting explained on hover and with ⓘ
 - German and English, follows the Home Assistant language and theme
 
@@ -40,7 +41,12 @@ entity: climate.living_room
 layout: kompakt      # kompakt | ring | kachel
 name: Living room    # optional
 show_modes: true     # optional
+temperature_sensor: sensor.living_room_temperature  # optional, replaces the thermostat's reading
+humidity_sensor: sensor.living_room_humidity        # optional
 ```
+
+If the external temperature sensor is unavailable, the card falls back to the thermostat's own reading.
+The sensors only change what the card shows; the thermostat keeps regulating on its own sensor.
 
 ## Who may change what
 

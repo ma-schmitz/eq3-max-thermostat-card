@@ -6,6 +6,11 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 
 ## [Unreleased]
 
+### Hinzugefügt
+- Optional `temperature_sensor`: ein externer Sensor ersetzt die Ist-Temperatur des Thermostats
+  (fällt auf das Thermostat zurück, wenn er nicht verfügbar ist); optional `humidity_sensor` zeigt die
+  Luftfeuchte. Beide lassen sich im visuellen Editor auswählen.
+
 ## [0.1.1] – 2026-11-14
 
 ### Behoben
