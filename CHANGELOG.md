@@ -11,7 +11,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versions: [Sem
   the eq3_max integration, under "Community" (Home Assistant 2026.6+).
 - Optional `temperature_sensor`: an external sensor replaces the thermostat's current temperature
   (falls back to the thermostat when unavailable); optional `humidity_sensor` shows the humidity.
-  Both can be picked in the visual editor.
+  Both can be picked in the visual editor. With an external sensor the thermostat's own reading
+  stays visible small below it (ring: tooltip), since the thermostat keeps regulating on it.
 
 ## [0.1.1] – 2026-11-14
 

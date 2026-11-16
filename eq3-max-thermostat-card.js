@@ -77,6 +77,8 @@ const EN = {
   "Externer Temperatursensor (optional)": "External temperature sensor (optional)",
   "Externer Feuchtesensor (optional)": "External humidity sensor (optional)",
   "Luftfeuchte": "Humidity",
+  "Thermostat {value} °C": "Thermostat {value} °C",
+  "Messwert am Thermostat (am Heizkörper)": "Reading at the thermostat (at the radiator)",
   "Temperatur für die Komfort-Taste am Gerät und das Preset „Komfort“. Gilt für den ganzen Raum.": "Temperature of the comfort button on the device and of the preset \"Comfort\". Applies to the whole room.",
   "Absenktemperatur für die Eco-Taste, den Eco-Taster und das Preset „Eco“. Gilt für den ganzen Raum.": "Setback temperature of the eco button, the eco push button and the preset \"Eco\". Applies to the whole room.",
   "Höchster Sollwert, der sich am Gerät einstellen lässt.": "Highest target that can be set on the device.",
@@ -455,6 +457,16 @@ export function sensorValue(hass, entityId) {
   return num(s.state);
 }
 
+/** Current temperature: an external sensor replaces the thermostat's own reading (falls back
+ * when unavailable); the thermostat's reading stays known so the card can show both. */
+export function currentReading(hass, config) {
+  const own = num(hass.states[config.entity]?.attributes?.current_temperature);
+  const ext = sensorValue(hass, config.temperature_sensor);
+  return ext !== null
+    ? { current: ext, currentEntity: config.temperature_sensor, own, external: true }
+    : { current: own, currentEntity: config.entity, own, external: false };
+}
+
 /** Everything the card shows, from states and attributes. */
 function readModel(hass, config) {
   const climate = hass.states[config.entity];
@@ -475,13 +487,7 @@ function readModel(hass, config) {
     deviceId: entry?.device_id,
     name: config.name || device?.name_by_user || device?.name || attrs.friendly_name || config.entity,
     area: areaId ? hass.areas?.[areaId]?.name : undefined,
-    // An external sensor replaces the thermostat's own reading (falls back when unavailable).
-    ...(() => {
-      const ext = sensorValue(hass, config.temperature_sensor);
-      return ext !== null
-        ? { current: ext, currentEntity: config.temperature_sensor }
-        : { current: num(attrs.current_temperature), currentEntity: config.entity };
-    })(),
+    ...currentReading(hass, config),
     humidity: sensorValue(hass, config.humidity_sensor),
     target: num(attrs.temperature),
     hvac: climate.state,
@@ -754,10 +760,16 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
 
     _current(lang, m) {
       const cur = h("div", { class: "cur", title: t(lang, "Verlauf"), onclick: () => this._moreInfo(m.currentEntity) }, fmt(m.current), h("small", {}, "°C"));
-      if (m.humidity === null) return cur;
-      return h("div", { class: "curcol" }, cur,
-        h("div", { class: "hum", title: t(lang, "Luftfeuchte"), onclick: () => this._moreInfo(this._config.humidity_sensor) },
-          icon("mdi:water-percent"), `${fmt(m.humidity, 0)} %`));
+      const own = m.external && m.own !== null
+        ? h("div", { class: "hum", title: t(lang, "Messwert am Thermostat (am Heizkörper)"), onclick: () => this._moreInfo(this._config.entity) },
+          icon("mdi:thermostat"), t(lang, "Thermostat {value} °C", { value: fmt(m.own) }))
+        : null;
+      const hum = m.humidity === null
+        ? null
+        : h("div", { class: "hum", title: t(lang, "Luftfeuchte"), onclick: () => this._moreInfo(this._config.humidity_sensor) },
+          icon("mdi:water-percent"), `${fmt(m.humidity, 0)} %`);
+      if (!own && !hum) return cur;
+      return h("div", { class: "curcol" }, cur, hum, own);
     }
 
     _foot(lang, m) {
@@ -845,7 +857,9 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
         h("div", { class: "ring" }, svg,
           h("div", { class: "c" },
             h("div", { class: "big" }, m.hvac === "off" ? t(lang, "Aus") : `${fmt(baseTarget(m.attrs))}°`),
-            h("div", { class: "sub" }, t(lang, "Ist {value} °C", { value: fmt(m.current) })),
+            h("div", m.external && m.own !== null
+              ? { class: "sub", title: t(lang, "Thermostat {value} °C", { value: fmt(m.own) }) }
+              : { class: "sub" }, t(lang, "Ist {value} °C", { value: fmt(m.current) })),
             m.humidity === null ? null : h("div", { class: "sub" }, icon("mdi:water-percent"), `${fmt(m.humidity, 0)} %`),
             m.isWall ? null : h("div", { class: "sub" }, icon("mdi:valve"), `${m.valve ?? "–"} %`))),
         h("div", { class: "ringbtns" },

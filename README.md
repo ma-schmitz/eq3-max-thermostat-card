@@ -47,6 +47,8 @@ humidity_sensor: sensor.living_room_humidity        # optional
 
 If the external temperature sensor is unavailable, the card falls back to the thermostat's own reading.
 The sensors only change what the card shows; the thermostat keeps regulating on its own sensor.
+So the card also shows the thermostat's own reading small below (ring: as a tooltip) – a large
+gap explains why a room gets warmer or colder than expected.
 
 ## Who may change what
 

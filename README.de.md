@@ -47,6 +47,8 @@ humidity_sensor: sensor.wohnzimmer_luftfeuchte    # optional
 
 Ist der externe Temperatursensor nicht verfügbar, zeigt die Karte wieder den Wert des Thermostats.
 Die Sensoren ändern nur die Anzeige; das Thermostat regelt weiter nach seinem eigenen Fühler.
+Deshalb zeigt die Karte dessen Messwert klein darunter (Ring: als Tooltip) – eine große
+Abweichung erklärt, warum ein Raum wärmer oder kälter wird als erwartet.
 
 ## Wer darf was
 

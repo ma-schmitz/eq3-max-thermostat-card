@@ -20,6 +20,7 @@ import {
   isUnavailable,
   sensorValue,
   entitySuggestion,
+  currentReading,
   moduleLabel,
   FACTORY_WEEK_PROFILE,
   WEEKDAYS,
@@ -239,4 +240,18 @@ test("entitySuggestion: only for climate entities of eq3_max", () => {
   assert.equal(entitySuggestion(hass, "climate.fremd"), null); // other integration
   assert.equal(entitySuggestion(hass, "climate.unknown"), null); // not in the registry
   assert.equal(entitySuggestion(hass, undefined), null);
+});
+
+test("currentReading: external sensor first, the thermostat's own reading stays known", () => {
+  const hass = hassWith({
+    [CLIMATE]: { state: "heat", attributes: { current_temperature: 19.5 } },
+    "sensor.raum": { state: "21.4" },
+    "sensor.weg": { state: "unavailable" },
+  });
+  assert.deepEqual(currentReading(hass, { entity: CLIMATE, temperature_sensor: "sensor.raum" }),
+    { current: 21.4, currentEntity: "sensor.raum", own: 19.5, external: true });
+  assert.deepEqual(currentReading(hass, { entity: CLIMATE, temperature_sensor: "sensor.weg" }),
+    { current: 19.5, currentEntity: CLIMATE, own: 19.5, external: false });
+  assert.deepEqual(currentReading(hass, { entity: CLIMATE }),
+    { current: 19.5, currentEntity: CLIMATE, own: 19.5, external: false });
 });
