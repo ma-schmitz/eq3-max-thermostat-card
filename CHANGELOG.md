@@ -14,6 +14,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versions: [Sem
   Both can be picked in the visual editor. With an external sensor the thermostat's own reading
   stays visible small below it (ring: tooltip), since the thermostat keeps regulating on it.
 
+### Fixed
+- **A tap in the ring layout no longer sets the target by accident.** Only the arc itself sets
+  it; a tap on the valve arc, the valve line or the gap at the bottom set 30.5 °C before. The
+  valve and humidity lines in the centre open their history.
+
 ## [0.1.1] – 2026-11-14
 
 ### Fixed

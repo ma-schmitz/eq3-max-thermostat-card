@@ -17,6 +17,7 @@ import {
   configNumber,
   ringTemperature,
   ringAngle,
+  ringHit,
   isUnavailable,
   sensorValue,
   entitySuggestion,
@@ -254,4 +255,17 @@ test("currentReading: external sensor first, the thermostat's own reading stays 
     { current: 19.5, currentEntity: CLIMATE, own: 19.5, external: false });
   assert.deepEqual(currentReading(hass, { entity: CLIMATE }),
     { current: 19.5, currentEntity: CLIMATE, own: 19.5, external: false });
+});
+
+test("ringHit: only the arc band sets the target, not the valve arc or the gap", () => {
+  const at = (deg, r) => ringHit(r * Math.cos((deg * Math.PI) / 180), r * Math.sin((deg * Math.PI) / 180));
+  assert.equal(at(270, 80), "ring"); // top of the arc
+  assert.equal(at(135, 80), "ring"); // start
+  assert.equal(at(45, 80), "ring"); // end
+  assert.equal(at(90, 80), "none"); // gap at the bottom: was 30.5 °C
+  assert.equal(at(100, 85), "none");
+  assert.equal(at(90, 64), "centre"); // valve arc / valve line
+  assert.equal(at(200, 64), "centre");
+  assert.equal(at(0, 0), "centre");
+  assert.equal(at(270, 110), "none");
 });

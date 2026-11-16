@@ -212,6 +212,20 @@ export function ringTemperature(dx, dy) {
   return Math.min(MAX_TEMP, Math.max(MIN_TEMP, Math.round(value * 2) / 2));
 }
 
+/** What a press at (dx, dy) from the ring's centre hits: "ring" (the 270° arc band, sets the
+ * target), "centre" (history) or "none". The valve arc (r 64) and the gap at the bottom are no
+ * ring: a press there set 30.5 °C (16.11.2026). */
+export function ringHit(dx, dy) {
+  const dist = Math.hypot(dx, dy);
+  if (dist < RING_INNER) return "centre";
+  if (dist > RING_OUTER) return "none";
+  const angle = ((Math.atan2(dy, dx) * 180) / Math.PI + 360) % 360;
+  return (angle - 135 + 360) % 360 > 270 ? "none" : "ring";
+}
+// The arc has radius 80 (stroke 10, handle 9): the band reaches a little either side of it.
+const RING_INNER = 70;
+const RING_OUTER = 100;
+
 /** Angle (degrees, 135..405) of a temperature on the ring, for the handle. */
 export function ringAngle(temperature) {
   const frac = (Math.min(MAX_TEMP, Math.max(MIN_TEMP, Number(temperature))) - MIN_TEMP) / (MAX_TEMP - MIN_TEMP);
@@ -826,9 +840,9 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
       };
       svg.addEventListener("pointerdown", (ev) => {
         const { dx, dy } = pick(ev);
-        const dist = Math.hypot(dx, dy);
-        if (dist < 55) { this._moreInfo(m.currentEntity); return; } // centre: history
-        if (dist > 100) return; // only the ring band
+        const hit = ringHit(dx, dy);
+        if (hit === "centre") { this._moreInfo(m.currentEntity); return; } // centre: history
+        if (hit !== "ring") return; // only the arc itself sets the target
         ev.preventDefault();
         svg.setPointerCapture(ev.pointerId);
         this._drag = true;
@@ -866,7 +880,9 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
             m.humidity === null ? null : h("div", {
               class: "sub hit", title: t(lang, "Luftfeuchte"), onclick: () => this._moreInfo(this._config.humidity_sensor),
             }, icon("mdi:water-percent"), `${fmt(m.humidity, 0)} %`),
-            m.isWall ? null : h("div", { class: "sub" }, icon("mdi:valve"), `${m.valve ?? "–"} %`))),
+            m.isWall ? null : h("div", {
+              class: "sub hit", title: t(lang, "Ventil"), onclick: () => this._moreInfo(m.ents.ventil),
+            }, icon("mdi:valve"), `${m.valve ?? "–"} %`))),
         h("div", { class: "ringbtns" },
           h("button", { class: "round", onclick: () => step(-1), disabled: m.hvac === "off" }, "−"),
           h("button", { class: "round", onclick: () => step(+1), disabled: m.hvac === "off" }, "+")),

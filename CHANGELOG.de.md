@@ -14,6 +14,11 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
   Luftfeuchte. Beide lassen sich im visuellen Editor auswählen. Mit externem Sensor bleibt der
   Messwert des Thermostats klein darunter sichtbar (Ring: Tooltip), denn nach ihm regelt es.
 
+### Behoben
+- **Ein Tippen im Ring-Layout verstellt die Solltemperatur nicht mehr versehentlich.** Nur der
+  Bogen selbst stellt sie ein; ein Tippen auf den Ventilbogen, die Ventilzeile oder die Lücke
+  unten setzte vorher 30,5 °C. Ventil- und Feuchtezeile in der Mitte öffnen ihren Verlauf.
+
 ## [0.1.1] – 2026-11-14
 
 ### Behoben
