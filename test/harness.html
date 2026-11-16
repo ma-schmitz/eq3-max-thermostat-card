@@ -123,11 +123,25 @@
     grid.append(box);
     return card;
   };
+  // ?shot=1 (or ?sensors=1): the living room shows an external room sensor and humidity (0.1.2).
+  const wz = { entity: "climate.ht_wz" };
+  if (qs.get("shot") || qs.get("sensors")) {
+    hass.states["sensor.raum_temperatur"] = { state: "21.8", attributes: { device_class: "temperature" } };
+    hass.states["sensor.raum_feuchte"] = { state: "52", attributes: { device_class: "humidity" } };
+    Object.assign(wz, { temperature_sensor: "sensor.raum_temperatur", humidity_sensor: "sensor.raum_feuchte" });
+  }
   window.cards = [
-    add({ entity: "climate.ht_wz" }), add({ entity: "climate.ht_ez" }), add({ entity: "climate.wt" }),
-    add({ entity: "climate.ht_wz", layout: "ring" }), add({ entity: "climate.ht_ez", layout: "ring" }),
-    add({ entity: "climate.ht_wz", layout: "kachel" }, true), add({ entity: "climate.ht_ez", layout: "kachel" }, true),
+    add({ ...wz }), add({ entity: "climate.ht_ez" }), add({ entity: "climate.wt" }),
+    add({ ...wz, layout: "ring" }), add({ entity: "climate.ht_ez", layout: "ring" }),
+    add({ ...wz, layout: "kachel" }, true), add({ entity: "climate.ht_ez", layout: "kachel" }, true),
   ];
+  // ?rects=1: card positions for cutting screenshots (tools/screenshots.py).
+  if (qs.get("rects")) setTimeout(() => {
+    document.body.setAttribute("data-rects", JSON.stringify(window.cards.map((c) => {
+      const r = c.getBoundingClientRect();
+      return [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)];
+    })));
+  }, 500);
   const q = new URLSearchParams(location.search);
   if (q.get("selftest") === "minors") {
     setTimeout(async () => {
