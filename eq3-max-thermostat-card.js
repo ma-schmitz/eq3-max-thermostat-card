@@ -401,6 +401,7 @@ const STYLE = `
   /* Ring */
   .ring { position: relative; width: 190px; height: 190px; margin: 0 auto; }
   .ring svg { position: absolute; inset: 0; touch-action: none; cursor: pointer; }
+  .ring .c .hit { pointer-events: auto; cursor: pointer; }
   .ring .c { pointer-events: none; position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
   .ring .big { font-size: 40px; font-weight: 500; letter-spacing: -.02em; }
   .ring .sub { font-size: 13px; color: var(--e3-muted); display: inline-flex; gap: 3px; align-items: center; }
@@ -857,10 +858,14 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
         h("div", { class: "ring" }, svg,
           h("div", { class: "c" },
             h("div", { class: "big" }, m.hvac === "off" ? t(lang, "Aus") : `${fmt(baseTarget(m.attrs))}°`),
-            h("div", m.external && m.own !== null
-              ? { class: "sub", title: t(lang, "Thermostat {value} °C", { value: fmt(m.own) }) }
-              : { class: "sub" }, t(lang, "Ist {value} °C", { value: fmt(m.current) })),
-            m.humidity === null ? null : h("div", { class: "sub" }, icon("mdi:water-percent"), `${fmt(m.humidity, 0)} %`),
+            h("div", {
+              class: "sub hit",
+              title: m.external && m.own !== null ? t(lang, "Thermostat {value} °C", { value: fmt(m.own) }) : t(lang, "Verlauf"),
+              onclick: () => this._moreInfo(m.currentEntity),
+            }, t(lang, "Ist {value} °C", { value: fmt(m.current) })),
+            m.humidity === null ? null : h("div", {
+              class: "sub hit", title: t(lang, "Luftfeuchte"), onclick: () => this._moreInfo(this._config.humidity_sensor),
+            }, icon("mdi:water-percent"), `${fmt(m.humidity, 0)} %`),
             m.isWall ? null : h("div", { class: "sub" }, icon("mdi:valve"), `${m.valve ?? "–"} %`))),
         h("div", { class: "ringbtns" },
           h("button", { class: "round", onclick: () => step(-1), disabled: m.hvac === "off" }, "−"),
