@@ -6,13 +6,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versions: [Sem
 
 ## [Unreleased]
 
+## [0.1.2] – 2026-11-16
+
 ### Added
 - The card is suggested in the card picker ("Add card" → "By entity") for climate entities of
-  the eq3_max integration, under "Community" (Home Assistant 2026.6+).
+  the eq3_max integration, under "Community" (Home Assistant 2026.6+). Thanks to BSass (#1).
 - Optional `temperature_sensor`: an external sensor replaces the thermostat's current temperature
   (falls back to the thermostat when unavailable); optional `humidity_sensor` shows the humidity.
   Both can be picked in the visual editor. With an external sensor the thermostat's own reading
   stays visible small below it (ring: tooltip), since the thermostat keeps regulating on it.
+  Thanks to BSass (#2).
 
 ### Fixed
 - **A tap in the ring layout no longer sets the target by accident.** Only the arc itself sets

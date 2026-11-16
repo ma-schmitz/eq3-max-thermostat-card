@@ -1,6 +1,6 @@
 {
   "name": "eq3-max-thermostat-card",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "description": "Lovelace card for eQ-3 MAX! thermostats of the eq3_max integration",
