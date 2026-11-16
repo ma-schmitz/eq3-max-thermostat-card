@@ -848,6 +848,13 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
     description: "Thermostat with valve, battery, radio and window – settings and week program in a pop-up (eq3_max).",
     preview: true,
     documentationURL: "https://github.com/ma-schmitz/eq3-max-thermostat-card",
+    // Card picker suggestion (HA >= 2026.6): only for climate entities of eq3_max
+    getEntitySuggestion: (hass, entityId) => {
+      if (!entityId || !entityId.startsWith("climate.")) return null;
+      const ent = hass.entities && hass.entities[entityId];
+      if (!ent || ent.platform !== "eq3_max") return null;
+      return { config: { type: "custom:eq3-max-thermostat-card", entity: entityId, layout: "kompakt" } };
+    },
   });
   console.info(`%c eq3-max-thermostat-card %c ${VERSION} `, "background:#ff8100;color:#fff", "background:#444;color:#fff");
 }

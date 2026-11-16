@@ -6,6 +6,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versions: [Sem
 
 ## [Unreleased]
 
+### Added
+- The card is suggested in the card picker ("Add card" → "By entity") for climate entities of
+  the eq3_max integration, under "Community" (Home Assistant 2026.6+).
+
 ## [0.1.1] – 2026-11-14
 
 ### Fixed
