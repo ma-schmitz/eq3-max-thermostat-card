@@ -9,6 +9,9 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 ### Hinzugefügt
 - Die Karte wird in der Kartenauswahl („Karte hinzufügen“ → „Nach Entität“) für Klima-Entitäten
   der Integration eq3_max unter „Community“ vorgeschlagen (Home Assistant ab 2026.6).
+- Optional `temperature_sensor`: ein externer Sensor ersetzt die Ist-Temperatur des Thermostats
+  (fällt auf das Thermostat zurück, wenn er nicht verfügbar ist); optional `humidity_sensor` zeigt die
+  Luftfeuchte. Beide lassen sich im visuellen Editor auswählen.
 
 ## [0.1.1] – 2026-11-14
 

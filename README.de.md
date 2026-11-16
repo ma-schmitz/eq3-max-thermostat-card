@@ -20,7 +20,8 @@ Eine Lovelace-Karte für MAX!-Heizkörper- und Wandthermostate der Integration
 - Einstellungen im Pop-up, ohne das Dashboard zu verlassen: Temperaturen, Fenster, Boost & Ventil
   (Wandthermostat: Boost & Anzeige Soll/Ist), **Wochenprogramm** und Geräteinfo
 - Drei Layouts: `kompakt` (Standard), `ring` (Sollwert durch Ziehen oder Tippen am Ring), `kachel`
-- Klick auf Ist-Temperatur oder Ventil öffnet den Verlauf von Home Assistant
+- Optional ein externer Temperatursensor, der den Wert des Thermostats ersetzt, und ein Feuchtesensor
+- Klick auf Ist-Temperatur, Luftfeuchte oder Ventil öffnet den Verlauf von Home Assistant
 - Jede Einstellung per Mouseover und ⓘ erklärt
 - Deutsch und Englisch, folgt Sprache und Theme von Home Assistant
 
@@ -40,7 +41,12 @@ entity: climate.wohnzimmer
 layout: kompakt      # kompakt | ring | kachel
 name: Wohnzimmer     # optional
 show_modes: true     # optional
+temperature_sensor: sensor.wohnzimmer_temperatur  # optional, ersetzt den Wert des Thermostats
+humidity_sensor: sensor.wohnzimmer_luftfeuchte    # optional
 ```
+
+Ist der externe Temperatursensor nicht verfügbar, zeigt die Karte wieder den Wert des Thermostats.
+Die Sensoren ändern nur die Anzeige; das Thermostat regelt weiter nach seinem eigenen Fühler.
 
 ## Wer darf was
 

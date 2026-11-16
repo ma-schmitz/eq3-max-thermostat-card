@@ -74,6 +74,9 @@ const EN = {
   "Entität": "Entity", "Layout": "Layout", "Name (optional)": "Name (optional)", "Modus-Knöpfe zeigen": "Show mode buttons",
   "kompakt": "compact", "ring": "ring", "kachel": "tile",
   "Ist {value} °C": "Now {value} °C", "nicht verfügbar": "unavailable",
+  "Externer Temperatursensor (optional)": "External temperature sensor (optional)",
+  "Externer Feuchtesensor (optional)": "External humidity sensor (optional)",
+  "Luftfeuchte": "Humidity",
   "Temperatur für die Komfort-Taste am Gerät und das Preset „Komfort“. Gilt für den ganzen Raum.": "Temperature of the comfort button on the device and of the preset \"Comfort\". Applies to the whole room.",
   "Absenktemperatur für die Eco-Taste, den Eco-Taster und das Preset „Eco“. Gilt für den ganzen Raum.": "Setback temperature of the eco button, the eco push button and the preset \"Eco\". Applies to the whole room.",
   "Höchster Sollwert, der sich am Gerät einstellen lässt.": "Highest target that can be set on the device.",
@@ -348,6 +351,9 @@ const STYLE = `
   .cur, .valve, .vcol { cursor: pointer; }
   .cur { font-size: 34px; letter-spacing: -.02em; line-height: 1; white-space: nowrap; }
   .cur small { font-size: 15px; color: var(--e3-muted); margin-left: 2px; }
+  .curcol { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .hum { cursor: pointer; color: var(--e3-muted); font-size: 12.5px; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+  .hum ha-icon { --mdc-icon-size: 15px; }
   .stepper { display: inline-flex; align-items: center; gap: 2px; border-radius: 999px; padding: 3px; background: color-mix(in srgb, var(--tone) 12%, transparent); }
   .stepper button { width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--e3-card); cursor: pointer; font-size: 18px; box-shadow: 0 1px 2px rgba(0, 0, 0, .15); }
   .stepper button:disabled { opacity: .4; cursor: default; }
@@ -433,6 +439,14 @@ function ageText(lang, iso) {
   return t(lang, "vor {n} h", { n: Math.round(minutes / 60) });
 }
 
+/** Numeric state of an optional external sensor; null when not set or unavailable. */
+export function sensorValue(hass, entityId) {
+  if (!entityId) return null;
+  const s = hass.states[entityId];
+  if (!s || isUnavailable(s)) return null;
+  return num(s.state);
+}
+
 /** Everything the card shows, from states and attributes. */
 function readModel(hass, config) {
   const climate = hass.states[config.entity];
@@ -453,7 +467,14 @@ function readModel(hass, config) {
     deviceId: entry?.device_id,
     name: config.name || device?.name_by_user || device?.name || attrs.friendly_name || config.entity,
     area: areaId ? hass.areas?.[areaId]?.name : undefined,
-    current: num(attrs.current_temperature),
+    // An external sensor replaces the thermostat's own reading (falls back when unavailable).
+    ...(() => {
+      const ext = sensorValue(hass, config.temperature_sensor);
+      return ext !== null
+        ? { current: ext, currentEntity: config.temperature_sensor }
+        : { current: num(attrs.current_temperature), currentEntity: config.entity };
+    })(),
+    humidity: sensorValue(hass, config.humidity_sensor),
     target: num(attrs.temperature),
     hvac: climate.state,
     preset: attrs.preset_mode || "none",
@@ -562,7 +583,8 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
     set hass(hass) {
       this._hass = hass;
       const ents = findEntities(hass, this._config?.entity);
-      const ids = [this._config?.entity, ...Object.values(ents), ...(hass.states[this._config?.entity]?.attributes?.fenster || [])];
+      const ids = [this._config?.entity, ...Object.values(ents), ...(hass.states[this._config?.entity]?.attributes?.fenster || []),
+        this._config?.temperature_sensor, this._config?.humidity_sensor];
       const sig = ids.map((id) => {
         const s = hass.states[id];
         return s ? `${s.state}|${s.last_updated}` : "";
@@ -713,13 +735,21 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
       return h("ha-card", {},
         this._head(lang, m, this._kindText(lang, m)),
         h("div", { class: "temps" },
-          h("div", { class: "cur", title: t(lang, "Verlauf"), onclick: () => this._moreInfo(this._config.entity) }, fmt(m.current), h("small", {}, "°C")),
+          this._current(lang, m),
           this._stepper(m)),
         this._away(lang, m),
         this._modes(lang, m),
         m.isWall ? null : h("div", { class: "valve", title: t(lang, "Verlauf"), onclick: () => this._moreInfo(m.ents.ventil) }, icon("mdi:valve"), t(lang, "Ventil"),
           h("div", { class: "meter" }, h("span", { style: { width: `${m.valve ?? 0}%` } })), `${m.valve ?? "–"} %`),
         this._foot(lang, m));
+    }
+
+    _current(lang, m) {
+      const cur = h("div", { class: "cur", title: t(lang, "Verlauf"), onclick: () => this._moreInfo(m.currentEntity) }, fmt(m.current), h("small", {}, "°C"));
+      if (m.humidity === null) return cur;
+      return h("div", { class: "curcol" }, cur,
+        h("div", { class: "hum", title: t(lang, "Luftfeuchte"), onclick: () => this._moreInfo(this._config.humidity_sensor) },
+          icon("mdi:water-percent"), `${fmt(m.humidity, 0)} %`));
     }
 
     _foot(lang, m) {
@@ -776,7 +806,7 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
       svg.addEventListener("pointerdown", (ev) => {
         const { dx, dy } = pick(ev);
         const dist = Math.hypot(dx, dy);
-        if (dist < 55) { this._moreInfo(this._config.entity); return; } // centre: history
+        if (dist < 55) { this._moreInfo(m.currentEntity); return; } // centre: history
         if (dist > 100) return; // only the ring band
         ev.preventDefault();
         svg.setPointerCapture(ev.pointerId);
@@ -808,6 +838,7 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
           h("div", { class: "c" },
             h("div", { class: "big" }, m.hvac === "off" ? t(lang, "Aus") : `${fmt(baseTarget(m.attrs))}°`),
             h("div", { class: "sub" }, t(lang, "Ist {value} °C", { value: fmt(m.current) })),
+            m.humidity === null ? null : h("div", { class: "sub" }, icon("mdi:water-percent"), `${fmt(m.humidity, 0)} %`),
             m.isWall ? null : h("div", { class: "sub" }, icon("mdi:valve"), `${m.valve ?? "–"} %`))),
         h("div", { class: "ringbtns" },
           h("button", { class: "round", onclick: () => step(-1), disabled: m.hvac === "off" }, "−"),
@@ -828,7 +859,7 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
         h("div", { class: "left" },
           this._head(lang, m, this._stateText(lang, m)),
           h("div", { class: "temps" },
-            h("div", { class: "cur", title: t(lang, "Verlauf"), onclick: () => this._moreInfo(this._config.entity) }, fmt(m.current), h("small", {}, "°C")),
+            this._current(lang, m),
             this._stepper(m, false)),
           this._away(lang, m),
           this._modes(lang, m, true)),
@@ -1364,7 +1395,7 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
         this._form = document.createElement("ha-form");
         this._form.addEventListener("value-changed", (ev) => {
           const config = { ...this._config, ...ev.detail.value };
-          if (!config.name) delete config.name;
+          for (const key of ["name", "temperature_sensor", "humidity_sensor"]) if (!config[key]) delete config[key];
           this._config = config;
           this.dispatchEvent(new CustomEvent("config-changed", { detail: { config }, bubbles: true, composed: true }));
         });
@@ -1375,9 +1406,12 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
         { name: "entity", required: true, selector: { entity: { filter: { domain: "climate", integration: "eq3_max" } } } },
         { name: "layout", selector: { select: { mode: "dropdown", options: ["kompakt", "ring", "kachel"].map((v) => ({ value: v, label: t(lang, v) })) } } },
         { name: "name", selector: { text: {} } },
+        { name: "temperature_sensor", selector: { entity: { filter: { domain: "sensor", device_class: "temperature" } } } },
+        { name: "humidity_sensor", selector: { entity: { filter: { domain: "sensor", device_class: "humidity" } } } },
         { name: "show_modes", selector: { boolean: {} } },
       ];
-      const labels = { entity: "Entität", layout: "Layout", name: "Name (optional)", show_modes: "Modus-Knöpfe zeigen" };
+      const labels = { entity: "Entität", layout: "Layout", name: "Name (optional)", show_modes: "Modus-Knöpfe zeigen",
+        temperature_sensor: "Externer Temperatursensor (optional)", humidity_sensor: "Externer Feuchtesensor (optional)" };
       this._form.computeLabel = (schema) => t(lang, labels[schema.name] || schema.name);
       this._form.data = this._config;
     }
