@@ -19,6 +19,7 @@ import {
   ringAngle,
   isUnavailable,
   sensorValue,
+  entitySuggestion,
   moduleLabel,
   FACTORY_WEEK_PROFILE,
   WEEKDAYS,
@@ -226,4 +227,16 @@ test("sensorValue: external sensor reading, null when unset, unavailable or not 
   assert.equal(sensorValue(hass, "sensor.off"), null);
   assert.equal(sensorValue(hass, "sensor.unk"), null);
   assert.equal(sensorValue(hass, "sensor.txt"), null);
+});
+
+test("entitySuggestion: only for climate entities of eq3_max", () => {
+  const hass = hassWith();
+  assert.deepEqual(entitySuggestion(hass, CLIMATE), {
+    config: { type: "custom:eq3-max-thermostat-card", entity: CLIMATE, layout: "kompakt" },
+  });
+  assert.equal(entitySuggestion(hass, "sensor.ht_wohnzimmer_ventil"), null); // not climate
+  hass.entities["climate.fremd"] = entity("climate.fremd", undefined, "dev3", "mqtt");
+  assert.equal(entitySuggestion(hass, "climate.fremd"), null); // other integration
+  assert.equal(entitySuggestion(hass, "climate.unknown"), null); // not in the registry
+  assert.equal(entitySuggestion(hass, undefined), null);
 });

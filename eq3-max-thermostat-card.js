@@ -221,6 +221,14 @@ export function isUnavailable(climate) {
   return !climate || climate.state === "unavailable" || climate.state === "unknown";
 }
 
+/** Card picker suggestion (HA >= 2026.6): only for climate entities of eq3_max. */
+export function entitySuggestion(hass, entityId) {
+  if (!entityId || !entityId.startsWith("climate.")) return null;
+  const ent = hass.entities && hass.entities[entityId];
+  if (!ent || ent.platform !== "eq3_max") return null;
+  return { config: { type: "custom:eq3-max-thermostat-card", entity: entityId, layout: "kompakt" } };
+}
+
 function slug(text) {
   // Like Home Assistant's slugify for the attribute keys rssi_<module>: ü → u, others → _.
   return String(text).normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
@@ -880,12 +888,7 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
     preview: true,
     documentationURL: "https://github.com/ma-schmitz/eq3-max-thermostat-card",
     // Card picker suggestion (HA >= 2026.6): only for climate entities of eq3_max
-    getEntitySuggestion: (hass, entityId) => {
-      if (!entityId || !entityId.startsWith("climate.")) return null;
-      const ent = hass.entities && hass.entities[entityId];
-      if (!ent || ent.platform !== "eq3_max") return null;
-      return { config: { type: "custom:eq3-max-thermostat-card", entity: entityId, layout: "kompakt" } };
-    },
+    getEntitySuggestion: entitySuggestion,
   });
   console.info(`%c eq3-max-thermostat-card %c ${VERSION} `, "background:#ff8100;color:#fff", "background:#444;color:#fff");
 }
