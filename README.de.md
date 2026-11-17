@@ -3,7 +3,7 @@
 [English](README.md) · **Deutsch**
 
 Eine Lovelace-Karte für MAX!-Heizkörper- und Wandthermostate der Integration
-[eq3_max](https://github.com/ma-schmitz/eq3_max) (braucht **eq3_max 0.8.0 oder neuer**).
+[eq3_max](https://github.com/ma-schmitz/eq3_max) (braucht **eq3_max 0.8.0** und **Home Assistant 2026.8** oder neuer).
 
 ![Layout kompakt](docs/images/card-kompakt-de-light.png)
 

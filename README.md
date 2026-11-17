@@ -3,7 +3,7 @@
 **English** · [Deutsch](README.de.md)
 
 A Lovelace card for eQ-3 MAX! radiator and wall thermostats of the
-[eq3_max](https://github.com/ma-schmitz/eq3_max) integration (requires **eq3_max 0.8.0 or newer**).
+[eq3_max](https://github.com/ma-schmitz/eq3_max) integration (requires **eq3_max 0.8.0** and **Home Assistant 2026.8** or newer).
 
 ![Compact layout](docs/images/card-kompakt-en-light.png)
 

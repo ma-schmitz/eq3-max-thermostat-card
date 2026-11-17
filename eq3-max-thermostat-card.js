@@ -2,7 +2,7 @@
 // Eine Datei ohne Build-Schritt. Oben die reinen Funktionen (exportiert, mit node --test
 // geprüft), unten die Karte, das Pop-up und der Editor (nur im Browser).
 
-export const VERSION = "0.1.2";
+export const VERSION = "0.1.3";
 
 // Wochentage, wie eq3_max sie speichert und der Dienst set_week_profile sie nimmt.
 export const WEEKDAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
@@ -15,6 +15,9 @@ export const ROOM_KEYS = [
 
 export const MIN_TEMP = 4.5;
 export const MAX_TEMP = 30.5;
+// Range and step of a MAX! thermostat in °C: the week program, and the target where the
+// climate entity says nothing else.
+const MAX_RANGE = { min: MIN_TEMP, max: MAX_TEMP, step: 0.5 };
 
 const WORKDAY = [
   { temperature: 17, until: "06:00" }, { temperature: 21, until: "09:00" },
@@ -73,11 +76,12 @@ const EN = {
   "Entität {entity} nicht gefunden.": "Entity {entity} not found.",
   "Entität": "Entity", "Layout": "Layout", "Name (optional)": "Name (optional)", "Modus-Knöpfe zeigen": "Show mode buttons",
   "kompakt": "compact", "ring": "ring", "kachel": "tile",
-  "Ist {value} °C": "Now {value} °C", "nicht verfügbar": "unavailable",
+  "Ist {value} {unit}": "Now {value} {unit}", "nicht verfügbar": "unavailable",
   "Externer Temperatursensor (optional)": "External temperature sensor (optional)",
   "Externer Feuchtesensor (optional)": "External humidity sensor (optional)",
   "Luftfeuchte": "Humidity",
-  "Thermostat {value} °C": "Thermostat {value} °C",
+  "Thermostat {value} {unit}": "Thermostat {value} {unit}",
+  "Entität {entity} gehört nicht zur Integration eq3_max.": "Entity {entity} does not belong to the eq3_max integration.",
   "Messwert am Thermostat (am Heizkörper)": "Reading at the thermostat (at the radiator)",
   "Temperatur für die Komfort-Taste am Gerät und das Preset „Komfort“. Gilt für den ganzen Raum.": "Temperature of the comfort button on the device and of the preset \"Comfort\". Applies to the whole room.",
   "Absenktemperatur für die Eco-Taste, den Eco-Taster und das Preset „Eco“. Gilt für den ganzen Raum.": "Setback temperature of the eco button, the eco push button and the preset \"Eco\". Applies to the whole room.",
@@ -123,14 +127,53 @@ export function rssiLevel(dbm, rfError) {
 
 /** Entities of the thermostat's device by eq3_max key (translation_key); renames do not matter. */
 export function findEntities(hass, climateId) {
-  const own = hass?.entities?.[climateId];
-  const found = {};
-  if (!own || !own.device_id) return found;
-  for (const entry of Object.values(hass.entities)) {
-    if (entry.device_id !== own.device_id || entry.platform !== "eq3_max" || !entry.translation_key) continue;
-    if (!(entry.translation_key in found)) found[entry.translation_key] = entry.entity_id;
+  const all = hass?.entities;
+  const own = all?.[climateId];
+  if (!own || !own.device_id) return {};
+  // Home Assistant sets hass on every state change of any entity, but replaces hass.entities
+  // only when the registry changes: search once per registry and thermostat.
+  let cache = ENTITY_CACHE.get(all);
+  if (!cache) ENTITY_CACHE.set(all, (cache = new Map()));
+  let found = cache.get(climateId);
+  if (!found) {
+    found = {};
+    for (const entry of Object.values(all)) {
+      if (entry.device_id !== own.device_id || entry.platform !== "eq3_max" || !entry.translation_key) continue;
+      if (!(entry.translation_key in found)) found[entry.translation_key] = entry.entity_id;
+    }
+    cache.set(climateId, Object.freeze(found));
   }
   return found;
+}
+const ENTITY_CACHE = new WeakMap();
+
+/** Range, step and unit of the target temperature as the climate entity reports them (Home
+ *  Assistant converts to °F on an imperial system); the MAX! values where it says nothing. */
+export function tempRange(hass, climate) {
+  const attrs = climate?.attributes || {};
+  const step = num(attrs.target_temp_step);
+  return {
+    min: num(attrs.min_temp) ?? MIN_TEMP,
+    max: num(attrs.max_temp) ?? MAX_TEMP,
+    step: step !== null && step > 0 ? step : 0.5,
+    unit: hass?.config?.unit_system?.temperature || "°C",
+  };
+}
+
+function snap(value, range) {
+  const stepped = Math.round(value / range.step) * range.step;
+  return Math.min(range.max, Math.max(range.min, Number(stepped.toFixed(2))));
+}
+
+/** Locale for numbers as set in the user's profile (hass.locale); undefined = the browser's. */
+export function numberLocale(locale) {
+  switch (locale?.number_format) {
+    case "comma_decimal": return "en-US";
+    case "decimal_comma": return "de";
+    case "space_comma": return "fr";
+    case "system": return undefined;
+    default: return locale?.language || undefined;
+  }
 }
 
 function num(value) {
@@ -204,12 +247,11 @@ export function baseTarget(attrs) {
 /** Temperature for a point (dx, dy) relative to the ring centre (screen coordinates, y down).
  *  The arc starts at 135° (bottom left) and runs 270° clockwise; the gap below snaps to the
  *  nearer end. */
-export function ringTemperature(dx, dy) {
+export function ringTemperature(dx, dy, range = MAX_RANGE) {
   const angle = ((Math.atan2(dy, dx) * 180) / Math.PI + 360) % 360;
   let rel = (angle - 135 + 360) % 360;
   if (rel > 270) rel = rel > 315 ? 0 : 270;
-  const value = MIN_TEMP + (rel / 270) * (MAX_TEMP - MIN_TEMP);
-  return Math.min(MAX_TEMP, Math.max(MIN_TEMP, Math.round(value * 2) / 2));
+  return snap(range.min + (rel / 270) * (range.max - range.min), range);
 }
 
 /** What a press at (dx, dy) from the ring's centre hits: "ring" (the 270° arc band, sets the
@@ -227,8 +269,8 @@ const RING_INNER = 70;
 const RING_OUTER = 100;
 
 /** Angle (degrees, 135..405) of a temperature on the ring, for the handle. */
-export function ringAngle(temperature) {
-  const frac = (Math.min(MAX_TEMP, Math.max(MIN_TEMP, Number(temperature))) - MIN_TEMP) / (MAX_TEMP - MIN_TEMP);
+export function ringAngle(temperature, range = MAX_RANGE) {
+  const frac = (Math.min(range.max, Math.max(range.min, Number(temperature))) - range.min) / (range.max - range.min);
   return 135 + frac * 270;
 }
 
@@ -289,11 +331,12 @@ export function changedValues(original, draft) {
   return out;
 }
 
-/** Target ± one 0.5 step within the MAX! range; unknown target starts at 21. */
-export function stepTarget(current, dir) {
+/** Target ± one step within the range (MAX!: 0.5 within 4.5..30.5); an unknown target starts
+ *  at 21, or in the middle of a range that does not hold 21 (°F). */
+export function stepTarget(current, dir, range = MAX_RANGE) {
   const base = num(current);
-  if (base === null) return 21;
-  return Math.min(MAX_TEMP, Math.max(MIN_TEMP, Math.round((base + dir * 0.5) * 2) / 2));
+  if (base === null) return range.min <= 21 && range.max >= 21 ? 21 : snap((range.min + range.max) / 2, range);
+  return snap(base + dir * range.step, range);
 }
 
 // =============================================================================
@@ -453,7 +496,23 @@ function h(tag, attrs = {}, ...children) {
 }
 
 const icon = (name) => h("ha-icon", { icon: name });
-const fmt = (value, digits = 1) => (value === null || value === undefined ? "–" : Number(value).toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits }));
+// Numbers as the user's profile wants them (set with every hass), not as the browser does.
+let NUMBER_LOCALE;
+function fmt(value, digits = 1) {
+  if (value === null || value === undefined) return "–";
+  const options = { minimumFractionDigits: digits, maximumFractionDigits: digits };
+  try {
+    return Number(value).toLocaleString(NUMBER_LOCALE, options);
+  } catch {
+    return Number(value).toLocaleString(undefined, options); // a language tag the browser does not know
+  }
+}
+
+/** Attributes of a clickable element that is no button: reachable and usable by keyboard. */
+const press = (fn) => ({
+  role: "button", tabindex: "0", onclick: fn,
+  onkeydown: (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); fn(); } },
+});
 
 function ageText(lang, iso) {
   if (!iso) return null;
@@ -499,6 +558,7 @@ function readModel(hass, config) {
   const linkState = st("verknuepfungen");
   return {
     climate, attrs, ents, isWall, valve, rssi, rf,
+    range: tempRange(hass, climate),
     deviceId: entry?.device_id,
     name: config.name || device?.name_by_user || device?.name || attrs.friendly_name || config.entity,
     area: areaId ? hass.areas?.[areaId]?.name : undefined,
@@ -582,7 +642,9 @@ function arc(r, fraction) {
   return `${len} ${full}`;
 }
 
-if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined") {
+// Each block only once: a resource entered twice loads this file twice, and a second
+// customElements.define throws.
+if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined" && !customElements.get("eq3-max-thermostat-card")) {
   class Eq3MaxThermostatCard extends HTMLElement {
     constructor() {
       super();
@@ -611,6 +673,7 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
 
     set hass(hass) {
       this._hass = hass;
+      NUMBER_LOCALE = numberLocale(hass.locale);
       const ents = findEntities(hass, this._config?.entity);
       const ids = [this._config?.entity, ...Object.values(ents), ...(hass.states[this._config?.entity]?.attributes?.fenster || []),
         this._config?.temperature_sensor, this._config?.humidity_sensor];
@@ -663,6 +726,10 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
     disconnectedCallback() {
       // The view changed: the pop-up belongs to this card and goes with it.
       this._dialog?.close();
+      // A drag cut off here would keep the card from drawing new states for good.
+      this._drag = false;
+      clearTimeout(this._localTimer);
+      this._local = undefined;
     }
 
     _openDialog() {
@@ -686,6 +753,11 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
       root.replaceChildren(h("style", {}, STYLE));
       if (!m) {
         root.append(h("ha-card", {}, h("div", { class: "err" }, t(lang, "Entität {entity} nicht gefunden.", { entity: this._config.entity }))));
+        return;
+      }
+      const entry = hass.entities?.[this._config.entity];
+      if (entry && entry.platform !== "eq3_max") {
+        root.append(h("ha-card", {}, h("div", { class: "err" }, t(lang, "Entität {entity} gehört nicht zur Integration eq3_max.", { entity: this._config.entity }))));
         return;
       }
       if (isUnavailable(m.climate)) {
@@ -728,15 +800,15 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
       const off = m.hvac === "off";
       const shown = baseTarget(m.attrs);
       return h("div", { class: "stepper" },
-        h("button", { onclick: () => step(-1), disabled: off || shown <= MIN_TEMP }, "−"),
+        h("button", { onclick: () => step(-1), disabled: off || (shown !== null && shown <= m.range.min) }, "−"),
         h("span", { class: "v" }, withIcon ? icon("mdi:target") : null, `${fmt(shown)}°`),
-        h("button", { onclick: () => step(+1), disabled: off || shown >= MAX_TEMP }, "+"));
+        h("button", { onclick: () => step(+1), disabled: off || (shown !== null && shown >= m.range.max) }, "+"));
     }
 
     _step(dir) {
       // From the latest state (a pending target counts), not from the rendered one.
-      const attrs = this._hass.states[this._config.entity]?.attributes || {};
-      const target = stepTarget(this._local ?? baseTarget(attrs), dir);
+      const climate = this._hass.states[this._config.entity];
+      const target = stepTarget(this._local ?? baseTarget(climate?.attributes), dir, tempRange(this._hass, climate));
       this._local = target;
       clearTimeout(this._localTimer);
       this._localTimer = setTimeout(() => { this._local = undefined; }, 3000);
@@ -768,20 +840,20 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
           this._stepper(m)),
         this._away(lang, m),
         this._modes(lang, m),
-        m.isWall ? null : h("div", { class: "valve", title: t(lang, "Verlauf"), onclick: () => this._moreInfo(m.ents.ventil) }, icon("mdi:valve"), t(lang, "Ventil"),
+        m.isWall ? null : h("div", { class: "valve", title: t(lang, "Verlauf"), ...press(() => this._moreInfo(m.ents.ventil)) }, icon("mdi:valve"), t(lang, "Ventil"),
           h("div", { class: "meter" }, h("span", { style: { width: `${m.valve ?? 0}%` } })), `${m.valve ?? "–"} %`),
         this._foot(lang, m));
     }
 
     _current(lang, m) {
-      const cur = h("div", { class: "cur", title: t(lang, "Verlauf"), onclick: () => this._moreInfo(m.currentEntity) }, fmt(m.current), h("small", {}, "°C"));
+      const cur = h("div", { class: "cur", title: t(lang, "Verlauf"), ...press(() => this._moreInfo(m.currentEntity)) }, fmt(m.current), h("small", {}, m.range.unit));
       const own = m.external && m.own !== null
-        ? h("div", { class: "hum", title: t(lang, "Messwert am Thermostat (am Heizkörper)"), onclick: () => this._moreInfo(this._config.entity) },
-          icon("mdi:thermostat"), t(lang, "Thermostat {value} °C", { value: fmt(m.own) }))
+        ? h("div", { class: "hum", title: t(lang, "Messwert am Thermostat (am Heizkörper)"), ...press(() => this._moreInfo(this._config.entity)) },
+          icon("mdi:thermostat"), t(lang, "Thermostat {value} {unit}", { value: fmt(m.own), unit: m.range.unit }))
         : null;
       const hum = m.humidity === null
         ? null
-        : h("div", { class: "hum", title: t(lang, "Luftfeuchte"), onclick: () => this._moreInfo(this._config.humidity_sensor) },
+        : h("div", { class: "hum", title: t(lang, "Luftfeuchte"), ...press(() => this._moreInfo(this._config.humidity_sensor)) },
           icon("mdi:water-percent"), `${fmt(m.humidity, 0)} %`);
       if (!own && !hum) return cur;
       return h("div", { class: "curcol" }, cur, hum, own);
@@ -798,7 +870,9 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
 
     _ring(lang, m) {
       const ringTarget = baseTarget(m.attrs);
-      const frac = ringTarget === null ? 0 : (ringTarget - MIN_TEMP) / (MAX_TEMP - MIN_TEMP);
+      const range = m.range;
+      const span = range.max - range.min;
+      const frac = ringTarget === null ? 0 : (ringTarget - range.min) / span;
       const ns = "http://www.w3.org/2000/svg";
       const svg = document.createElementNS(ns, "svg");
       svg.setAttribute("viewBox", "0 0 190 190");
@@ -819,11 +893,11 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
       const shown = baseTarget(m.attrs);
       const handle = document.createElementNS(ns, "circle");
       const placeHandle = (temperature) => {
-        const rad = (ringAngle(temperature ?? MIN_TEMP) * Math.PI) / 180;
+        const rad = (ringAngle(temperature ?? range.min, range) * Math.PI) / 180;
         for (const [k, v] of Object.entries({ cx: 95 + 80 * Math.cos(rad), cy: 95 + 80 * Math.sin(rad), r: 9,
           fill: "var(--e3-card)", stroke: "var(--tone)", "stroke-width": 4 })) handle.setAttribute(k, v);
       };
-      placeHandle(m.hvac === "off" ? MIN_TEMP : shown);
+      placeHandle(m.hvac === "off" ? range.min : shown);
       svg.append(handle);
       const valueArc = svg.querySelectorAll("circle")[1];
       const pick = (ev) => {
@@ -834,7 +908,7 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
       const show = (temperature) => {
         this._dragValue = temperature;
         placeHandle(temperature);
-        if (valueArc) valueArc.setAttribute("stroke-dasharray", arc(80, (temperature - MIN_TEMP) / (MAX_TEMP - MIN_TEMP)));
+        if (valueArc) valueArc.setAttribute("stroke-dasharray", arc(80, (temperature - range.min) / span));
         const big = this.shadowRoot.querySelector(".ring .big");
         if (big) big.textContent = `${fmt(temperature)}°`;
       };
@@ -842,16 +916,17 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
         const { dx, dy } = pick(ev);
         const hit = ringHit(dx, dy);
         if (hit === "centre") { this._moreInfo(m.currentEntity); return; } // centre: history
-        if (hit !== "ring") return; // only the arc itself sets the target
+        // Only the arc itself sets the target, and not while off (as with − and +).
+        if (hit !== "ring" || m.hvac === "off") return;
         ev.preventDefault();
         svg.setPointerCapture(ev.pointerId);
         this._drag = true;
-        show(ringTemperature(dx, dy));
+        show(ringTemperature(dx, dy, range));
       });
       svg.addEventListener("pointermove", (ev) => {
         if (!this._drag) return;
         const { dx, dy } = pick(ev);
-        show(ringTemperature(dx, dy));
+        show(ringTemperature(dx, dy, range));
       });
       const drop = () => {
         if (!this._drag) return;
@@ -874,14 +949,14 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
             h("div", { class: "big" }, m.hvac === "off" ? t(lang, "Aus") : `${fmt(baseTarget(m.attrs))}°`),
             h("div", {
               class: "sub hit",
-              title: m.external && m.own !== null ? t(lang, "Thermostat {value} °C", { value: fmt(m.own) }) : t(lang, "Verlauf"),
-              onclick: () => this._moreInfo(m.currentEntity),
-            }, t(lang, "Ist {value} °C", { value: fmt(m.current) })),
+              title: m.external && m.own !== null ? t(lang, "Thermostat {value} {unit}", { value: fmt(m.own), unit: range.unit }) : t(lang, "Verlauf"),
+              ...press(() => this._moreInfo(m.currentEntity)),
+            }, t(lang, "Ist {value} {unit}", { value: fmt(m.current), unit: range.unit })),
             m.humidity === null ? null : h("div", {
-              class: "sub hit", title: t(lang, "Luftfeuchte"), onclick: () => this._moreInfo(this._config.humidity_sensor),
+              class: "sub hit", title: t(lang, "Luftfeuchte"), ...press(() => this._moreInfo(this._config.humidity_sensor)),
             }, icon("mdi:water-percent"), `${fmt(m.humidity, 0)} %`),
             m.isWall ? null : h("div", {
-              class: "sub hit", title: t(lang, "Ventil"), onclick: () => this._moreInfo(m.ents.ventil),
+              class: "sub hit", title: t(lang, "Ventil"), ...press(() => this._moreInfo(m.ents.ventil)),
             }, icon("mdi:valve"), `${m.valve ?? "–"} %`))),
         h("div", { class: "ringbtns" },
           h("button", { class: "round", onclick: () => step(-1), disabled: m.hvac === "off" }, "−"),
@@ -908,7 +983,7 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
           this._modes(lang, m, true)),
         h("div", { class: "right" }, symbols(lang, m).slice(0, 6).map((s) =>
           h("span", { class: `sym ${s.cls}`, title: s.title }, icon(s.icon)))),
-        m.isWall ? null : h("div", { class: "vcol", title: t(lang, "Ventil"), onclick: () => this._moreInfo(m.ents.ventil) },
+        m.isWall ? null : h("div", { class: "vcol", title: t(lang, "Ventil"), ...press(() => this._moreInfo(m.ents.ventil)) },
           h("div", { class: "vbar" }, h("span", { style: { height: `${m.valve ?? 0}%` } })),
           icon("mdi:valve"), `${m.valve ?? "–"} %`));
     }
@@ -1016,7 +1091,7 @@ function minutes(hhmm) {
   return hh * 60 + mm;
 }
 
-if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined") {
+if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined" && !customElements.get("eq3-max-thermostat-dialog")) {
   class Eq3MaxThermostatDialog extends HTMLElement {
     constructor() {
       super();
@@ -1047,11 +1122,13 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
     setup(config, hass) {
       this._config = config;
       this._hass = hass;
+      NUMBER_LOCALE = numberLocale(hass.locale);
       this._render();
     }
 
     set hass(hass) {
       this._hass = hass;
+      NUMBER_LOCALE = numberLocale(hass.locale);
       const ents = findEntities(hass, this._config?.entity);
       const attrs = hass.states[this._config?.entity]?.attributes || {};
       const ids = [this._config?.entity, ...Object.values(ents), ...(attrs.fenster || []), ...(attrs.raum || [])];
@@ -1106,13 +1183,18 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
             h("button", { class: "x", title: t(lang, "Schließen"), onclick: () => this.close() }, icon("mdi:close"))),
           h("div", { class: "tabs", role: "tablist" }, tabs.map((tab) =>
             h("button", {
-              class: `tab${this._tab === tab.id ? " on" : ""}`, role: "tab", title: t(lang, tab.title),
+              class: `tab${this._tab === tab.id ? " on" : ""}`, role: "tab", "aria-selected": String(this._tab === tab.id), title: t(lang, tab.title),
               onclick: () => { this._tab = tab.id; this._message = null; this._render(); },
             }, icon(tab.icon), h("span", {}, t(lang, tab.title))))),
           body.content,
           body.foot || null));
       const newBody = root.querySelector(".body");
       if (newBody && scroll) newBody.scrollTop = scroll;
+      if (!this._focused) {
+        // Opened: the keyboard starts inside the pop-up, not on the card behind it.
+        this._focused = true;
+        root.querySelector(".x")?.focus();
+      }
     }
 
     // --- Einstellungen (number/select der Gerätekonfiguration) -----------------
@@ -1413,7 +1495,7 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined")
   customElements.define("eq3-max-thermostat-dialog", Eq3MaxThermostatDialog);
 }
 
-if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined") {
+if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined" && !customElements.get("eq3-max-thermostat-card-editor")) {
   class Eq3MaxThermostatCardEditor extends HTMLElement {
     setConfig(config) {
       this._config = { layout: "kompakt", show_modes: true, ...config };

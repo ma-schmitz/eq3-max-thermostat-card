@@ -6,6 +6,25 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 
 ## [Unreleased]
 
+## [0.1.3] – 2026-11-17
+
+### Geändert
+- **Weniger Arbeit bei jeder Zustandsänderung.** Die Karte durchsuchte bei jeder Zustandsänderung
+  irgendeiner Entität alle Entitäten von Home Assistant; jetzt einmal je Thermostat, bis sich die
+  Entitätenliste ändert.
+- Bereich, Schrittweite und Einheit der Solltemperatur kommen von der Klima-Entität, die Karte
+  funktioniert damit auch, wenn Home Assistant auf °F steht. Das Wochenprogramm bleibt in °C, so
+  speichern es die Geräte.
+- Zahlen folgen dem Zahlenformat des Benutzerprofils statt dem des Browsers.
+- Eine Klima-Entität einer anderen Integration bekommt eine klare Meldung statt einer leeren Karte.
+- Ist-Temperatur, Luftfeuchte und Ventil sind per Tastatur erreichbar; das Pop-up übernimmt beim
+  Öffnen den Fokus.
+
+### Behoben
+- Der Ring stellt keine Temperatur mehr ein, solange das Thermostat aus ist (− und + waren schon gesperrt).
+- Eine doppelt eingetragene Dashboard-Ressource wirft beim zweiten Laden keinen Fehler mehr.
+- Ein durch einen Ansichtswechsel abgebrochenes Ziehen am Ring blockiert die Karte nicht mehr.
+
 ## [0.1.2] – 2026-11-16
 
 ### Hinzugefügt

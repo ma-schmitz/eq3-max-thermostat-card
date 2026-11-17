@@ -18,6 +18,8 @@ import {
   ringTemperature,
   ringAngle,
   ringHit,
+  tempRange,
+  numberLocale,
   isUnavailable,
   sensorValue,
   entitySuggestion,
@@ -268,4 +270,42 @@ test("ringHit: only the arc band sets the target, not the valve arc or the gap",
   assert.equal(at(200, 64), "centre");
   assert.equal(at(0, 0), "centre");
   assert.equal(at(270, 110), "none");
+});
+
+test("findEntities searches once per registry, again when the registry changes", () => {
+  const hass = hassWith();
+  const first = findEntities(hass, CLIMATE);
+  assert.equal(findEntities({ ...hass, states: { x: 1 } }, CLIMATE), first); // same registry object: cached
+  const renamed = { ...hass, entities: { ...hass.entities, "sensor.neu": entity("sensor.neu", "zuletzt_gemeldet") } };
+  assert.equal(findEntities(renamed, CLIMATE).zuletzt_gemeldet, "sensor.neu");
+  assert.equal(first.zuletzt_gemeldet, undefined);
+});
+
+test("tempRange: from the climate entity, MAX! values and °C where it says nothing", () => {
+  assert.deepEqual(tempRange({}, { attributes: {} }), { min: 4.5, max: 30.5, step: 0.5, unit: "°C" });
+  const imperial = { config: { unit_system: { temperature: "°F" } } };
+  assert.deepEqual(tempRange(imperial, { attributes: { min_temp: 40.1, max_temp: 86.9, target_temp_step: 0.5 } }),
+    { min: 40.1, max: 86.9, step: 0.5, unit: "°F" });
+  assert.equal(tempRange({}, { attributes: { target_temp_step: 0 } }).step, 0.5);
+});
+
+test("stepTarget, ringTemperature and ringAngle follow a given range (°F)", () => {
+  const f = { min: 40, max: 87, step: 1 };
+  assert.equal(stepTarget(70, +1, f), 71);
+  assert.equal(stepTarget(87, +1, f), 87);
+  assert.equal(stepTarget(null, +1, f), 64); // 21 is outside: middle of the range
+  const at = (deg) => ringTemperature(Math.cos((deg * Math.PI) / 180), Math.sin((deg * Math.PI) / 180), f);
+  assert.equal(at(135), 40);
+  assert.equal(at(45), 87);
+  assert.equal(at(270), 64);
+  assert.equal(ringAngle(40, f), 135);
+  assert.equal(ringAngle(87, f), 405);
+});
+
+test("numberLocale: the profile's number format, else its language", () => {
+  assert.equal(numberLocale({ language: "en", number_format: "language" }), "en");
+  assert.equal(numberLocale({ language: "en", number_format: "decimal_comma" }), "de");
+  assert.equal(numberLocale({ language: "de", number_format: "comma_decimal" }), "en-US");
+  assert.equal(numberLocale({ language: "de", number_format: "system" }), undefined);
+  assert.equal(numberLocale(undefined), undefined);
 });

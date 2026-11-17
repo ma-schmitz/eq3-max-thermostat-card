@@ -6,6 +6,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versions: [Sem
 
 ## [Unreleased]
 
+## [0.1.3] – 2026-11-17
+
+### Changed
+- **Less work on every state change.** The card looked through all entities of Home Assistant
+  with every state change of any entity; now once per thermostat until the entity registry changes.
+- Range, step and unit of the target temperature come from the climate entity, so the card also
+  works where Home Assistant is set to °F. The week program stays in °C, as the devices store it.
+- Numbers follow the number format of the user's profile instead of the browser's.
+- A climate entity of another integration gets a clear message instead of an empty card.
+- Current temperature, humidity and valve can be reached and opened by keyboard; the pop-up
+  takes the focus when it opens.
+
+### Fixed
+- The ring no longer sets a temperature while the thermostat is off (− and + were locked already).
+- A dashboard resource entered twice no longer raises an error on the second load.
+- A drag on the ring cut off by a view change no longer keeps the card from updating.
+
 ## [0.1.2] – 2026-11-16
 
 ### Added
