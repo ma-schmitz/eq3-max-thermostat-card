@@ -6,6 +6,16 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 
 ## [Unreleased]
 
+## [0.1.5] – 2026-11-17
+
+### Geändert
+- **Die Breite richtet sich nach dem Abschnitt** (Layouts `kompakt` und `ring`, Abschnitts-Dashboard).
+  Eine Karte allein im Abschnitt nimmt die ganze Breite, zwei stehen nebeneinander, bei drei
+  steht die dritte darunter in voller Breite. Bisher war jede Karte halb so breit wie der
+  Abschnitt, auf dem Handy blieb die halbe Bildschirmbreite leer. Eigene `grid_options` in der
+  Kartenkonfiguration gelten weiter.
+- Der Ring wächst in breiten Karten bis 230 px mit (bisher fest 190 px), seine Zahlen ebenfalls.
+
 ## [0.1.4] – 2026-11-17
 
 ### Behoben

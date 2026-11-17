@@ -2,7 +2,7 @@
 // Eine Datei ohne Build-Schritt. Oben die reinen Funktionen (exportiert, mit node --test
 // geprüft), unten die Karte, das Pop-up und der Editor (nur im Browser).
 
-export const VERSION = "0.1.4";
+export const VERSION = "0.1.5";
 
 // Wochentage, wie eq3_max sie speichert und der Dienst set_week_profile sie nimmt.
 export const WEEKDAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
@@ -268,6 +268,23 @@ export function ringHit(dx, dy) {
 const RING_INNER = 70;
 const RING_OUTER = 100;
 
+export const CARD_TYPE = "custom:eq3-max-thermostat-card";
+
+/** Grid columns (of 12) of a compact or ring card in its section. `siblings.half` says for
+ * every card of the section whether it is such a card, `index` which one this is. Cards of
+ * a run pair up side by side; one that is left alone (a single card, the last of three)
+ * takes the whole width. Unknown surroundings: half, as before 0.1.5. */
+export function sectionColumns(siblings) {
+  if (!siblings || !siblings.half?.[siblings.index]) return 6;
+  const { half, index } = siblings;
+  let start = index;
+  while (start > 0 && half[start - 1]) start -= 1;
+  let end = index;
+  while (end + 1 < half.length && half[end + 1]) end += 1;
+  const count = end - start + 1;
+  return count % 2 === 1 && index === end ? 12 : 6;
+}
+
 /** Angle (degrees, 135..405) of a temperature on the ring, for the handle. */
 export function ringAngle(temperature, range = MAX_RANGE) {
   const frac = (Math.min(range.max, Math.max(range.min, Number(temperature))) - range.min) / (range.max - range.min);
@@ -284,7 +301,7 @@ export function entitySuggestion(hass, entityId) {
   if (!entityId || !entityId.startsWith("climate.")) return null;
   const ent = hass.entities && hass.entities[entityId];
   if (!ent || ent.platform !== "eq3_max") return null;
-  return { config: { type: "custom:eq3-max-thermostat-card", entity: entityId, layout: "kompakt" } };
+  return { config: { type: CARD_TYPE, entity: entityId, layout: "kompakt" } };
 }
 
 function slug(text) {
@@ -458,12 +475,12 @@ const STYLE = `
   /* Ring */
   /* Shrinks with a narrow card (three sections side by side on a laptop: about 155 px); its
      texts follow in cqw, units of the ring's own width. */
-  .ring { position: relative; width: min(190px, 100%); aspect-ratio: 1; margin: 0 auto; container-type: inline-size; }
+  .ring { position: relative; width: min(230px, 100%); aspect-ratio: 1; margin: 0 auto; container-type: inline-size; }
   .ring svg { position: absolute; inset: 0; touch-action: none; cursor: pointer; }
   .ring .c .hit { pointer-events: auto; cursor: pointer; }
   .ring .c { pointer-events: none; position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
-  .ring .big { font-size: min(40px, calc(27cqw - 11px)); font-weight: 500; letter-spacing: -.02em; line-height: 1.15; }
-  .ring .sub { font-size: clamp(9.5px, 6.9cqw, 13px); color: var(--e3-muted); display: inline-flex; gap: 3px; align-items: center; white-space: nowrap; }
+  .ring .big { font-size: min(50px, calc(27cqw - 11px)); font-weight: 500; letter-spacing: -.02em; line-height: 1.15; }
+  .ring .sub { font-size: clamp(9.5px, 6.9cqw, 15px); color: var(--e3-muted); display: inline-flex; gap: 3px; align-items: center; white-space: nowrap; }
   .ring .sub ha-icon { --mdc-icon-size: 14px; }
   .ringbtns { display: flex; justify-content: center; gap: 44px; margin-top: -10px; }
   /* Very narrow: the modes wrap instead of running out of the card, the name gets the icon's room. */
@@ -705,12 +722,26 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined" 
     }
 
     getGridOptions() {
-      return {
-        // Height follows the content (modes wrap, wall thermostats have no valve row).
-        kompakt: { columns: 6, rows: "auto", min_columns: 6 },
-        ring: { columns: 6, rows: "auto", min_columns: 6 },
-        kachel: { columns: 12, rows: "auto", min_columns: 9 },
-      }[this._config?.layout] || { columns: 6, rows: 4 };
+      const layout = this._config?.layout;
+      if (layout === "kachel") return { columns: 12, rows: "auto", min_columns: 9 };
+      if (layout !== "kompakt" && layout !== "ring") return { columns: 6, rows: 4 };
+      // Height follows the content (modes wrap, wall thermostats have no valve row). Width:
+      // half the section next to another thermostat, all of it when alone (0.1.5). The
+      // section asks again with every state change; grid_options in the card's
+      // configuration still win.
+      return { columns: sectionColumns(this._siblings()), rows: "auto", min_columns: 6 };
+    }
+
+    /** Where this card stands among the cards of its section: {types, index}, or null
+     * outside a sections view (or before the card is in the page). */
+    _siblings() {
+      const card = this.parentElement; // hui-card
+      const cards = card?.getRootNode?.()?.host?._config?.cards;
+      if (!Array.isArray(cards)) return null;
+      let index = cards.indexOf(card.config);
+      if (index < 0) index = cards.findIndex((c) => c?.type === CARD_TYPE && c.entity === this._config?.entity);
+      if (index < 0) return null;
+      return { index, half: cards.map((c) => c?.type === CARD_TYPE && c.layout !== "kachel" && !c.grid_options?.columns) };
     }
 
     get _lang() {

@@ -25,6 +25,7 @@ import {
   entitySuggestion,
   currentReading,
   moduleLabel,
+  sectionColumns,
   FACTORY_WEEK_PROFILE,
   WEEKDAYS,
   ROOM_KEYS,
@@ -308,4 +309,13 @@ test("numberLocale: the profile's number format, else its language", () => {
   assert.equal(numberLocale({ language: "de", number_format: "comma_decimal" }), "en-US");
   assert.equal(numberLocale({ language: "de", number_format: "system" }), undefined);
   assert.equal(numberLocale(undefined), undefined);
+});
+
+test("sectionColumns: alone full width, pairs side by side, the odd one out full width", () => {
+  const cols = (half) => half.map((_, index) => sectionColumns({ half, index }));
+  assert.deepEqual(cols([false, true]), [6, 12]); // heading + one thermostat
+  assert.deepEqual(cols([false, true, true]), [6, 6, 6]);
+  assert.deepEqual(cols([false, true, true, true]), [6, 6, 6, 12]);
+  assert.deepEqual(cols([true, false, true, true]), [12, 6, 6, 6]); // runs count separately
+  assert.equal(sectionColumns(null), 6); // not in a sections view
 });

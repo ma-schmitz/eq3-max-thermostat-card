@@ -6,6 +6,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versions: [Sem
 
 ## [Unreleased]
 
+## [0.1.5] – 2026-11-17
+
+### Changed
+- **The width follows the section** (layouts `kompakt` and `ring`, sections dashboard). A card
+  alone in its section takes the whole width, two stand side by side, and of three the third
+  goes below at full width. Until now every card was half as wide as the section, leaving half
+  the screen empty on a phone. Your own `grid_options` in the card configuration still apply.
+- The ring grows in wide cards up to 230 px (fixed at 190 px before), and its figures with it.
+
 ## [0.1.4] – 2026-11-17
 
 ### Fixed
