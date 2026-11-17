@@ -6,6 +6,16 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 
 ## [Unreleased]
 
+## [0.1.4] – 2026-11-17
+
+### Behoben
+- **Schmale Karten waren abgeschnitten.** Stehen im Abschnitts-Dashboard drei Bereiche
+  nebeneinander (Laptop), ist eine Karte nur etwa 155 px breit: Der Ring (fest 190 px) ragte
+  rechts hinaus, die Modus-Knöpfe liefen aus der Karte. Der Ring schrumpft jetzt mit der Karte,
+  seine Zahlen mit ihm; unter 230 px brechen die Modus-Knöpfe um, der Name darf zweizeilig
+  werden (das runde Symbol entfällt), und im Layout `kompakt` rutscht der Sollwert unter die
+  Ist-Temperatur.
+
 ## [0.1.3] – 2026-11-17
 
 ### Geändert

@@ -6,6 +6,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versions: [Sem
 
 ## [Unreleased]
 
+## [0.1.4] – 2026-11-17
+
+### Fixed
+- **Narrow cards were cut off.** With three sections side by side in a sections dashboard
+  (laptop) a card is only about 155 px wide: the ring (fixed at 190 px) stuck out on the right
+  and the mode buttons ran out of the card. The ring now shrinks with the card, and its
+  figures with it; below 230 px the mode buttons wrap, the name may take two lines (the round
+  icon is dropped), and in the `kompakt` layout the target moves below the current temperature.
+
 ## [0.1.3] – 2026-11-17
 
 ### Changed

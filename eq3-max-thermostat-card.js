@@ -2,7 +2,7 @@
 // Eine Datei ohne Build-Schritt. Oben die reinen Funktionen (exportiert, mit node --test
 // geprüft), unten die Karte, das Pop-up und der Editor (nur im Browser).
 
-export const VERSION = "0.1.3";
+export const VERSION = "0.1.4";
 
 // Wochentage, wie eq3_max sie speichert und der Dienst set_week_profile sie nimmt.
 export const WEEKDAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
@@ -456,14 +456,26 @@ const STYLE = `
   .sym.warn { background: color-mix(in srgb, var(--e3-open) 16%, transparent); color: var(--e3-open); }
   .sym.bad { background: color-mix(in srgb, var(--e3-error) 14%, transparent); color: var(--e3-error); }
   /* Ring */
-  .ring { position: relative; width: 190px; height: 190px; margin: 0 auto; }
+  /* Shrinks with a narrow card (three sections side by side on a laptop: about 155 px); its
+     texts follow in cqw, units of the ring's own width. */
+  .ring { position: relative; width: min(190px, 100%); aspect-ratio: 1; margin: 0 auto; container-type: inline-size; }
   .ring svg { position: absolute; inset: 0; touch-action: none; cursor: pointer; }
   .ring .c .hit { pointer-events: auto; cursor: pointer; }
   .ring .c { pointer-events: none; position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
-  .ring .big { font-size: 40px; font-weight: 500; letter-spacing: -.02em; }
-  .ring .sub { font-size: 13px; color: var(--e3-muted); display: inline-flex; gap: 3px; align-items: center; }
+  .ring .big { font-size: min(40px, calc(27cqw - 11px)); font-weight: 500; letter-spacing: -.02em; line-height: 1.15; }
+  .ring .sub { font-size: clamp(9.5px, 6.9cqw, 13px); color: var(--e3-muted); display: inline-flex; gap: 3px; align-items: center; white-space: nowrap; }
   .ring .sub ha-icon { --mdc-icon-size: 14px; }
   .ringbtns { display: flex; justify-content: center; gap: 44px; margin-top: -10px; }
+  /* Very narrow: the modes wrap instead of running out of the card, the name gets the icon's room. */
+  @container (max-width: 230px) {
+    .modes { flex-wrap: wrap; justify-content: center; }
+    .mode { flex: none; }
+    .head { gap: 6px; }
+    .head .ic { display: none; }
+    .name { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.2; overflow-wrap: anywhere; }
+    .temps { flex-wrap: wrap; }
+    .ringbtns { gap: 24px; margin-top: -4px; }
+  }
   .round { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--e3-divider); background: var(--e3-card); font-size: 20px; cursor: pointer; }
   .center { justify-content: center; }
   /* Kachel */
