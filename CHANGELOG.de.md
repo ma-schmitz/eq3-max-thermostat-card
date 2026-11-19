@@ -6,6 +6,13 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 
 ## [Unreleased]
 
+## [0.1.6] – 2026-11-19
+
+### Behoben
+- **Wochenprogramm: Uhrzeit immer im 24-Stunden-Format.** Das Zeitfeld zeigte je nach
+  Browsersprache AM/PM, während daneben „06:00“ stand. Jetzt zwei Listen für Stunde und
+  Minute (5-Minuten-Schritte) (#3).
+
 ## [0.1.5] – 2026-11-17
 
 ### Geändert

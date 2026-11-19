@@ -26,6 +26,7 @@ import {
   currentReading,
   moduleLabel,
   sectionColumns,
+  timeOptions,
   FACTORY_WEEK_PROFILE,
   WEEKDAYS,
   ROOM_KEYS,
@@ -318,4 +319,12 @@ test("sectionColumns: alone full width, pairs side by side, the odd one out full
   assert.deepEqual(cols([false, true, true, true]), [6, 6, 6, 12]);
   assert.deepEqual(cols([true, false, true, true]), [12, 6, 6, 6]); // runs count separately
   assert.equal(sectionColumns(null), 6); // not in a sections view
+});
+
+test("timeOptions: 24 hours, minutes in steps of five, an odd minute is kept", () => {
+  const o = timeOptions("06:30");
+  assert.equal(o.hour, "06"); assert.equal(o.minute, "30");
+  assert.equal(o.hours.length, 24); assert.equal(o.hours[23], "23");
+  assert.deepEqual(o.minutes, ["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"]);
+  assert.ok(timeOptions("17:03").minutes.includes("03"));
 });

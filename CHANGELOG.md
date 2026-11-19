@@ -6,6 +6,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versions: [Sem
 
 ## [Unreleased]
 
+## [0.1.6] – 2026-11-19
+
+### Fixed
+- **Week program: time of day always in 24-hour format.** Depending on the browser's
+  language the time field showed AM/PM next to a "06:00". Now two lists for hour and minute
+  (steps of 5 minutes) (#3).
+
 ## [0.1.5] – 2026-11-17
 
 ### Changed

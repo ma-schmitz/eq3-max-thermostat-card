@@ -2,7 +2,7 @@
 // Eine Datei ohne Build-Schritt. Oben die reinen Funktionen (exportiert, mit node --test
 // geprüft), unten die Karte, das Pop-up und der Editor (nur im Browser).
 
-export const VERSION = "0.1.5";
+export const VERSION = "0.1.6";
 
 // Wochentage, wie eq3_max sie speichert und der Dienst set_week_profile sie nimmt.
 export const WEEKDAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
@@ -285,6 +285,16 @@ export function sectionColumns(siblings) {
   return count % 2 === 1 && index === end ? 12 : 6;
 }
 
+/** Hours and minutes of the day in 5-minute steps for the two lists of a time of day. A
+ * minute off the grid (never from a MAX! program) is kept as it is. */
+export function timeOptions(value) {
+  const [hh, mm] = String(value || "00:00").split(":").map(Number);
+  const two = (n) => String(n).padStart(2, "0");
+  const minutes = Array.from({ length: 12 }, (_, i) => i * 5);
+  if (!minutes.includes(mm)) minutes.push(mm);
+  return { hour: two(hh), minute: two(mm), hours: Array.from({ length: 24 }, (_, i) => two(i)), minutes: minutes.sort((x, y) => x - y).map(two) };
+}
+
 /** Angle (degrees, 135..405) of a temperature on the ring, for the handle. */
 export function ringAngle(temperature, range = MAX_RANGE) {
   const frac = (Math.min(range.max, Math.max(range.min, Number(temperature))) - range.min) / (range.max - range.min);
@@ -525,6 +535,22 @@ function h(tag, attrs = {}, ...children) {
 }
 
 const icon = (name) => h("ha-icon", { icon: name });
+/** A time of day as two lists (hours, minutes in 5-minute steps): always 24 hours. A time
+ * input shows AM/PM whenever the browser's language says so, whatever the profile wants. */
+function timeSelect(value, onchange) {
+  const o = timeOptions(value);
+  const list = (items, current) => {
+    const el = h("select", { class: "tsel" }, items.map((x) => h("option", { value: x }, x)));
+    el.value = current;
+    return el;
+  };
+  const hours = list(o.hours, o.hour);
+  const minutes = list(o.minutes, o.minute);
+  const changed = () => onchange(`${hours.value}:${minutes.value}`);
+  hours.addEventListener("change", changed);
+  minutes.addEventListener("change", changed);
+  return h("span", { class: "time" }, hours, ":", minutes);
+}
 // Numbers as the user's profile wants them (set with every hass), not as the browser does.
 let NUMBER_LOCALE;
 function fmt(value, digits = 1) {
@@ -1115,6 +1141,8 @@ const DIALOG_STYLE = `
   .edit h4 { margin: 0 0 8px; font-size: 13.5px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .pt { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13.5px; flex-wrap: wrap; }
   .pt .from { width: 52px; color: var(--e3-muted); }
+  .pt .time { display: inline-flex; align-items: center; gap: 2px; }
+  .pt .tsel { font: inherit; color: inherit; background: var(--e3-card); border: 1px solid var(--e3-divider); border-radius: 6px; padding: 3px 2px; }
   .del { border: 0; background: none; color: var(--e3-muted); cursor: pointer; margin-left: auto; display: inline-flex; }
   .link { border: 0; background: none; color: var(--e3-accent); cursor: pointer; font-size: 13px; display: inline-flex; gap: 4px; align-items: center; padding: 4px 0; }
   .days { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 10px; align-items: center; font-size: 12.5px; color: var(--e3-muted); }
@@ -1457,10 +1485,7 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined" 
           return h("div", { class: "pt" },
             h("span", { class: "from" }, s.from),
             "–",
-            last ? h("span", { class: "from" }, "24:00") : h("input", {
-              type: "time", step: "300", value: s.to,
-              onchange: (ev) => { s.to = ev.target.value || s.to; this._render(); },
-            }),
+            last ? h("span", { class: "from" }, "24:00") : timeSelect(s.to, (value) => { s.to = value; this._render(); }),
             h("div", { class: "st" },
               h("button", { onclick: () => temp(-1) }, "−"),
               h("span", {}, `${fmt(s.temperature)} °C`),
