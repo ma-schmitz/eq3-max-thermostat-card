@@ -6,6 +6,13 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
 
 ## [Unreleased]
 
+## [0.1.7] – 2026-11-20
+
+### Geändert
+- **Gleiche Höhe nebeneinander.** Unter dem Ist-Wert steht jetzt immer genau eine Zeile: Luftfeuchte
+  und der Messwert am Thermostat stehen nebeneinander statt untereinander, und Karten ohne externen
+  Fühler halten die Zeile frei. Kacheln mit und ohne Raumfühler sind damit gleich hoch.
+
 ## [0.1.6] – 2026-11-19
 
 ### Behoben

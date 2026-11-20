@@ -6,6 +6,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versions: [Sem
 
 ## [Unreleased]
 
+## [0.1.7] – 2026-11-20
+
+### Changed
+- **Same height side by side.** There is now always exactly one line below the current value:
+  humidity and the reading at the thermostat stand next to each other instead of one below the other,
+  and cards without an external sensor keep the line free. Tiles with and without a room sensor are
+  the same height.
+
 ## [0.1.6] – 2026-11-19
 
 ### Fixed

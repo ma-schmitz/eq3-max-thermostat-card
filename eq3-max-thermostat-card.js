@@ -2,7 +2,7 @@
 // Eine Datei ohne Build-Schritt. Oben die reinen Funktionen (exportiert, mit node --test
 // geprüft), unten die Karte, das Pop-up und der Editor (nur im Browser).
 
-export const VERSION = "0.1.6";
+export const VERSION = "0.1.7";
 
 // Wochentage, wie eq3_max sie speichert und der Dienst set_week_profile sie nimmt.
 export const WEEKDAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
@@ -448,6 +448,9 @@ const STYLE = `
   .curcol { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
   .hum { cursor: pointer; color: var(--e3-muted); font-size: 12.5px; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
   .hum ha-icon { --mdc-icon-size: 15px; }
+  .hum.spare { visibility: hidden; cursor: default; }
+  .subs { display: flex; flex-wrap: wrap; gap: 2px 10px; min-width: 0; }
+  .tile .subs { flex-wrap: nowrap; }
   .stepper { display: inline-flex; align-items: center; gap: 2px; border-radius: 999px; padding: 3px; background: color-mix(in srgb, var(--tone) 12%, transparent); }
   .stepper button { width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--e3-card); cursor: pointer; font-size: 18px; box-shadow: 0 1px 2px rgba(0, 0, 0, .15); }
   .stepper button:disabled { opacity: .4; cursor: default; }
@@ -924,8 +927,11 @@ if (typeof HTMLElement !== "undefined" && typeof customElements !== "undefined" 
         ? null
         : h("div", { class: "hum", title: t(lang, "Luftfeuchte"), ...press(() => this._moreInfo(this._config.humidity_sensor)) },
           icon("mdi:water-percent"), `${fmt(m.humidity, 0)} %`);
-      if (!own && !hum) return cur;
-      return h("div", { class: "curcol" }, cur, hum, own);
+      // Always exactly one line below the value (humidity and the thermostat's own reading
+      // side by side), so cards next to each other have the same height whether or not an
+      // external sensor or a humidity sensor is set.
+      const spare = own || hum ? null : h("div", { class: "hum spare", "aria-hidden": "true" }, icon("mdi:thermostat"), "\u00a0");
+      return h("div", { class: "curcol" }, cur, h("div", { class: "subs" }, hum, own, spare));
     }
 
     _foot(lang, m) {
